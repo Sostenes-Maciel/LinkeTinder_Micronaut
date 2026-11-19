@@ -1,0 +1,23 @@
+micronaut:
+  application:
+    name: ms-cadastro
+  server:
+    port: ${PORT:8081}
+    cors:
+      enabled: true
+      configurations:
+        default:
+          allowed-origins:
+            - ${FRONTEND_ORIGIN:http://localhost:5173}
+          allowed-methods:
+            - POST
+            - OPTIONS
+          allowed-headers:
+            - Content-Type
+
+datasources:
+  default:
+    url: jdbc:postgresql://localhost:5432/LinkeTinder_BD
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driverClassName: org.postgresql.Driver
