@@ -38,6 +38,13 @@ class CompetenciaController {
         return HttpResponse.status(HttpStatus.CREATED).body(criada)
     }
 
+    @Post('/candidatos/consulta-lote')
+    HttpResponse listarPorCandidatos(@Body Map<String, Object> dados) {
+        return HttpResponse.ok(
+                servico.listarPorCandidatos(dados)
+        )
+    }
+
     @Get('/candidatos/{cpf}')
     HttpResponse listarCandidato(@PathVariable String cpf) {
         return HttpResponse.ok(servico.listarPorCandidato(cpf))

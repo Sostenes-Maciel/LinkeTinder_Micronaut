@@ -18,16 +18,19 @@ class RepositorioPostgresCompetencia implements RepositorioCompetencia {
     @Override
     List<Map<String, Object>> listarCompetencias() {
         String sql = 'SELECT id_competencia, nome FROM competencia ORDER BY nome '
+
         dataSource.connection.withCloseable { Connection conexao ->
             conexao.prepareStatement(sql).withCloseable { instrucao ->
                 instrucao.executeQuery().withCloseable { resultado ->
                     List<Map<String, Object>> lista = []
+
                     while (resultado.next()) {
                         lista << ([
                                 idCompetencia: resultado.getInt('id_competencia'),
                                 nome         : resultado.getString('nome')
                         ] as Map<String, Object>)
                     }
+
                     return lista
                 }
             }
@@ -39,6 +42,7 @@ class RepositorioPostgresCompetencia implements RepositorioCompetencia {
         emTransacao { Connection conexao ->
             String nomePadronizado = obterNomePadronizado(conexao, nome)
             long idCompetencia = garantirEObterIdCompetencia(conexao, nomePadronizado)
+
             return [
                     idCompetencia: idCompetencia,
                     nome         : nomePadronizado
@@ -51,11 +55,67 @@ class RepositorioPostgresCompetencia implements RepositorioCompetencia {
         String sql = '''
             SELECT c.id_competencia, c.nome
             FROM competencia c
-            INNER JOIN candidato_competencia cc ON cc.id_competencia = c.id_competencia
+            INNER JOIN candidato_competencia cc
+                ON cc.id_competencia = c.id_competencia
             WHERE cc.cpf_candidato = ?
             ORDER BY c.nome ASC
         '''
+
         buscarVinculosPorTexto(sql, cpfCandidato)
+    }
+
+    @Override
+    Map<String, List<Map<String, Object>>> listarPorCandidatos(List<String> cpfs) {
+
+        Map<String, List<Map<String, Object>>> competenciasPorCpf =
+                new LinkedHashMap<>()
+
+        if (!cpfs) {
+            return competenciasPorCpf
+        }
+
+        cpfs.each { String cpf ->
+            competenciasPorCpf[cpf] = []
+        }
+
+        String marcadores = cpfs.collect { '?' }.join(', ')
+
+        String sql = """
+            SELECT
+                cc.cpf_candidato,
+                c.id_competencia,
+                c.nome
+            FROM candidato_competencia cc
+            INNER JOIN competencia c
+                ON c.id_competencia = cc.id_competencia
+            WHERE cc.cpf_candidato IN (${marcadores})
+            ORDER BY cc.cpf_candidato ASC, c.nome ASC
+        """
+
+        dataSource.connection.withCloseable { Connection conexao ->
+            conexao.prepareStatement(sql).withCloseable { instrucao ->
+
+                cpfs.eachWithIndex { String cpf, int indice ->
+                    instrucao.setString(indice + 1, cpf)
+                }
+
+                instrucao.executeQuery().withCloseable { resultado ->
+
+                    while (resultado.next()) {
+                        String cpf = resultado.getString('cpf_candidato')
+
+                        if (competenciasPorCpf.containsKey(cpf)) {
+                            competenciasPorCpf[cpf] << ([
+                                    idCompetencia: resultado.getInt('id_competencia'),
+                                    nome         : resultado.getString('nome')
+                            ] as Map<String, Object>)
+                        }
+                    }
+                }
+            }
+        }
+
+        return competenciasPorCpf
     }
 
     @Override
@@ -63,11 +123,13 @@ class RepositorioPostgresCompetencia implements RepositorioCompetencia {
         emTransacao { Connection conexao ->
             String nomePadronizado = obterNomePadronizado(conexao, nomeCompetencia)
             long idCompetencia = garantirEObterIdCompetencia(conexao, nomePadronizado)
+
             String sql = '''
                 INSERT INTO candidato_competencia (cpf_candidato, id_competencia)
                 VALUES (?, ?)
                 ON CONFLICT DO NOTHING
             '''
+
             conexao.prepareStatement(sql).withCloseable { instrucao ->
                 instrucao.setString(1, cpfCandidato)
                 instrucao.setLong(2, idCompetencia)
@@ -81,10 +143,12 @@ class RepositorioPostgresCompetencia implements RepositorioCompetencia {
         String sql = '''
             SELECT c.id_competencia, c.nome
             FROM competencia c
-            INNER JOIN empresa_competencia ec ON ec.id_competencia = c.id_competencia
+            INNER JOIN empresa_competencia ec
+                ON ec.id_competencia = c.id_competencia
             WHERE ec.cnpj_empresa = ?
             ORDER BY c.nome ASC
         '''
+
         buscarVinculosPorTexto(sql, cnpjEmpresa)
     }
 
@@ -93,11 +157,13 @@ class RepositorioPostgresCompetencia implements RepositorioCompetencia {
         emTransacao { Connection conexao ->
             String nomePadronizado = obterNomePadronizado(conexao, nomeCompetencia)
             long idCompetencia = garantirEObterIdCompetencia(conexao, nomePadronizado)
+
             String sql = '''
                 INSERT INTO empresa_competencia (cnpj_empresa, id_competencia)
                 VALUES (?, ?)
                 ON CONFLICT DO NOTHING
             '''
+
             conexao.prepareStatement(sql).withCloseable { instrucao ->
                 instrucao.setString(1, cnpjEmpresa)
                 instrucao.setLong(2, idCompetencia)
@@ -107,25 +173,30 @@ class RepositorioPostgresCompetencia implements RepositorioCompetencia {
     }
 
     @Override
-    List<Map<String, Object>> listarPorVaga(int idVaga){
+    List<Map<String, Object>> listarPorVaga(int idVaga) {
         String sql = '''
             SELECT c.id_competencia, c.nome
             FROM competencia c
-            INNER JOIN vaga_competencia vc ON vc.id_competencia = c.id_competencia
+            INNER JOIN vaga_competencia vc
+                ON vc.id_competencia = c.id_competencia
             WHERE vc.id_vaga = ?
             ORDER BY c.nome
         '''
+
         dataSource.connection.withCloseable { Connection conexao ->
             conexao.prepareStatement(sql).withCloseable { instrucao ->
                 instrucao.setInt(1, idVaga)
+
                 instrucao.executeQuery().withCloseable { resultado ->
                     List<Map<String, Object>> lista = []
+
                     while (resultado.next()) {
                         lista << ([
                                 idCompetencia: resultado.getInt('id_competencia'),
                                 nome         : resultado.getString('nome')
                         ] as Map<String, Object>)
                     }
+
                     return lista
                 }
             }
@@ -137,11 +208,13 @@ class RepositorioPostgresCompetencia implements RepositorioCompetencia {
         emTransacao { Connection conexao ->
             String nomePadronizado = obterNomePadronizado(conexao, nomeCompetencia)
             long idCompetencia = garantirEObterIdCompetencia(conexao, nomePadronizado)
+
             String sql = '''
                 INSERT INTO vaga_competencia (id_vaga, id_competencia)
                 VALUES (?, ?)
                 ON CONFLICT DO NOTHING
             '''
+
             conexao.prepareStatement(sql).withCloseable { instrucao ->
                 instrucao.setInt(1, idVaga)
                 instrucao.setLong(2, idCompetencia)
@@ -157,14 +230,17 @@ class RepositorioPostgresCompetencia implements RepositorioCompetencia {
         dataSource.connection.withCloseable { Connection conexao ->
             conexao.prepareStatement(sql).withCloseable { instrucao ->
                 instrucao.setString(1, identificador)
+
                 instrucao.executeQuery().withCloseable { resultado ->
                     List<Map<String, Object>> lista = []
+
                     while (resultado.next()) {
                         lista << ([
                                 idCompetencia: resultado.getInt('id_competencia'),
                                 nome         : resultado.getString('nome')
                         ] as Map<String, Object>)
                     }
+
                     return lista
                 }
             }
@@ -178,11 +254,11 @@ class RepositorioPostgresCompetencia implements RepositorioCompetencia {
         String nomeLimpo = competencia.trim()
 
         String sql = '''
-        SELECT nome
-        FROM competencia
-        WHERE lower(nome) = lower(?)
-        LIMIT 1
-    '''
+            SELECT nome
+            FROM competencia
+            WHERE lower(nome) = lower(?)
+            LIMIT 1
+        '''
 
         String nomeEncontrado = conexao.prepareStatement(sql).withCloseable { instrucao ->
             instrucao.setString(1, nomeLimpo)
@@ -195,52 +271,74 @@ class RepositorioPostgresCompetencia implements RepositorioCompetencia {
         return nomeEncontrado ?: nomeLimpo
     }
 
-    private static long garantirEObterIdCompetencia(Connection conexao, String nome) {
+    private static long garantirEObterIdCompetencia(
+            Connection conexao,
+            String nome
+    ) {
         String sql = '''
             INSERT INTO competencia (nome) VALUES (?)
             ON CONFLICT (nome) DO NOTHING
             RETURNING id_competencia
         '''
+
         long id = conexao.prepareStatement(sql).withCloseable { instrucao ->
             instrucao.setString(1, nome)
+
             instrucao.executeQuery().withCloseable { resultado ->
                 if (resultado.next()) {
                     return resultado.getLong('id_competencia')
                 }
+
                 return -1L
             }
         }
+
         if (id == -1L) {
-            String sqlBusca = 'SELECT id_competencia FROM competencia WHERE nome = ? LIMIT 1'
+            String sqlBusca = '''
+                SELECT id_competencia
+                FROM competencia
+                WHERE nome = ?
+                LIMIT 1
+            '''
+
             id = conexao.prepareStatement(sqlBusca).withCloseable { instrucao ->
                 instrucao.setString(1, nome)
+
                 instrucao.executeQuery().withCloseable { resultado ->
                     if (resultado.next()) {
                         return resultado.getLong('id_competencia')
                     }
+
                     return -1L
                 }
             }
         }
+
         if (id == -1L) {
-            throw new SQLException('Nao foi possivel obter o id da competencia.')
+            throw new SQLException(
+                    'Nao foi possivel obter o id da competencia.'
+            )
         }
+
         return id
     }
 
     private <T> T emTransacao(Closure<T> operacao) {
         dataSource.connection.withCloseable { Connection conexao ->
             conexao.autoCommit = false
+
             try {
                 T resultado = operacao.call(conexao)
                 conexao.commit()
                 resultado
+
             } catch (Exception exception) {
                 try {
                     conexao.rollback()
                 } catch (SQLException falhaRollback) {
                     exception.addSuppressed(falhaRollback)
                 }
+
                 throw exception
             }
         }

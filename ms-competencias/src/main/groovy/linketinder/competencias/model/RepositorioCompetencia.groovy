@@ -1,11 +1,14 @@
 package linketinder.competencias.model
 
 interface RepositorioCompetencia {
+
     List<Map<String, Object>> listarCompetencias()
 
     Map<String, Object> inserirCompetencia(String nome)
 
     List<Map<String, Object>> listarPorCandidato(String cpfCandidato)
+
+    Map<String, List<Map<String, Object>>> listarPorCandidatos(List<String> cpfs)
 
     void vincularCandidato(String cpfCandidato, String nomeCompetencia)
 
