@@ -12,10 +12,11 @@ interface StatusMatch {
     status: 'curtido' | 'match'
 }
 
-type VagaDaApi = Omit<Vaga, 'competencias'> & {
-    competencias?: string[]
-    competencia?: string[]
+interface CompetenciaResposta {
+    nome?: string
 }
+
+type VagaDaApi = Omit<Vaga, 'competencias'>
 
 export async function renderPerfilEmpresa(empresa: Empresa, mensagemSucesso?: string, animarTransicao: boolean = true): Promise<void> {
     const app = document.querySelector<HTMLDivElement>('#app')
@@ -24,21 +25,22 @@ export async function renderPerfilEmpresa(empresa: Empresa, mensagemSucesso?: st
     renderizarTemplatePerfil(app, empresa, mensagemSucesso, animarTransicao)
     void preencherEnderecoPerfil(empresa.cep)
 
-    // Busca candidatos e os status de curtida/match em paralelo
-    const [candidatosDoBanco, statusMatches, vagasDaEmpresa] = await Promise.all([
+    // Os dados gerais continuam vindo do backend principal; competências vêm do ms-competencias.
+    const cnpjLimpo = empresa.cnpj.replace(/\D/g, '')
+    const [candidatosDoBanco, statusMatches, vagasDaEmpresa, competenciasEmpresa] = await Promise.all([
         buscarCandidatosDoBanco(),
-        buscarStatusMatches(empresa.cnpj.replace(/\D/g, '')),
-        buscarVagasDaEmpresa(empresa.cnpj.replace(/\D/g, ''))
+        buscarStatusMatches(cnpjLimpo),
+        buscarVagasDaEmpresa(cnpjLimpo),
+        buscarCompetenciasDaEmpresa(cnpjLimpo)
     ])
 
+    renderizarCompetenciasEmpresa(competenciasEmpresa)
     renderizarGraficoCompetencias(candidatosDoBanco)
     renderizarTabelaCandidatos(empresa, candidatosDoBanco, statusMatches, vagasDaEmpresa)
     configurarEventos(empresa, statusMatches)
 }
 
 function renderizarTemplatePerfil(app: HTMLDivElement, empresa: Empresa, mensagemSucesso?: string, animarTransicao: boolean = true): void {
-    const competencias = Array.isArray(empresa.competencias) ? empresa.competencias : []
-
     app.innerHTML = `
         <section class="perfil-empresa ${animarTransicao ? 'tela-com-transicao' : ''}">
             <h1>Perfil da Empresa</h1>
@@ -56,10 +58,8 @@ function renderizarTemplatePerfil(app: HTMLDivElement, empresa: Empresa, mensage
                     </section>
                     <section class="perfil-bloco">
                         <h3>Competências desejadas</h3>
-                        <div class="perfil-tags">
-                            ${competencias.length
-                                ? competencias.map(competencia => `<span class="perfil-tag">${escaparHtml(competencia)}</span>`).join('')
-                                : '<span>Nenhuma competência informada</span>'}
+                        <div class="perfil-tags" id="tags-competencias-empresa">
+                            <span>Carregando competências...</span>
                         </div>
                     </section>
                 </div>
@@ -131,22 +131,102 @@ async function preencherEnderecoPerfil(cep: string): Promise<void> {
 async function buscarCandidatosDoBanco(): Promise<Candidato[]> {
     try {
         const resposta = await fetch('http://localhost:8080/api/candidatos')
-        if (resposta.ok) {
-            const dadosDoServidor = await resposta.json()
-            const resultado = Array.isArray(dadosDoServidor)
-                ? dadosDoServidor
-                : dadosDoServidor.dados ?? []
-
-            return resultado.map((candidato: Candidato) => ({
-                ...candidato,
-                competencias: Array.isArray(candidato.competencias) ? candidato.competencias : []
-            }))
+        if (!resposta.ok) {
+            throw new Error(`Falha ao buscar candidatos (HTTP ${resposta.status}).`)
         }
-        return []
+
+        const dadosDoServidor: unknown = await resposta.json()
+        const resultado = Array.isArray(dadosDoServidor)
+            ? dadosDoServidor
+            : typeof dadosDoServidor === 'object' && dadosDoServidor !== null
+            && 'dados' in dadosDoServidor && Array.isArray(dadosDoServidor.dados)
+                ? dadosDoServidor.dados
+                : []
+
+        // Não utiliza candidato.competencias: cada lista é consultada no ms-competencias.
+        return await Promise.all(resultado.map(async (candidato: Candidato) => {
+            const cpfLimpo = (candidato.cpf ?? '').replace(/\D/g, '')
+            const competencias = cpfLimpo
+                ? await buscarCompetenciasDoCandidato(cpfLimpo)
+                : []
+
+            return { ...candidato, competencias }
+        }))
     } catch (erro) {
-        console.error("Erro ao buscar candidatos:", erro)
+        console.error('Erro ao buscar candidatos:', erro)
         return []
     }
+}
+
+async function buscarCompetenciasDaEmpresa(cnpj: string): Promise<string[] | null> {
+    try {
+        const resposta = await fetch(
+            `http://localhost:8086/api/competencias/empresas/${encodeURIComponent(cnpj)}`
+        )
+        if (!resposta.ok) {
+            throw new Error(`Falha ao buscar competências da empresa (HTTP ${resposta.status}).`)
+        }
+
+        return extrairNomesCompetencias(await resposta.json())
+    } catch (erro) {
+        console.error('Erro ao buscar competências da empresa no ms-competencias:', erro)
+        return null
+    }
+}
+
+async function buscarCompetenciasDoCandidato(cpf: string): Promise<string[]> {
+    try {
+        const resposta = await fetch(
+            `http://localhost:8086/api/competencias/candidatos/${encodeURIComponent(cpf)}`
+        )
+        if (!resposta.ok) {
+            throw new Error(`Falha ao buscar competências do candidato (HTTP ${resposta.status}).`)
+        }
+
+        return extrairNomesCompetencias(await resposta.json()) ?? []
+    } catch (erro) {
+        console.error(`Erro ao buscar competências do candidato ${cpf} no ms-competencias:`, erro)
+        return []
+    }
+}
+
+function extrairNomesCompetencias(dados: unknown): string[] | null {
+    const lista = Array.isArray(dados)
+        ? dados
+        : typeof dados === 'object' && dados !== null
+        && 'dados' in dados && Array.isArray(dados.dados)
+            ? dados.dados
+            : null
+
+    if (!lista) {
+        console.error('Resposta inválida ao consultar competências:', dados)
+        return null
+    }
+
+    return lista
+        .map((item: string | CompetenciaResposta) =>
+            typeof item === 'string' ? item.trim() : (item?.nome ?? '').trim()
+        )
+        .filter((nome: string) => nome.length > 0)
+}
+
+function renderizarCompetenciasEmpresa(competencias: string[] | null): void {
+    const container = document.querySelector<HTMLDivElement>('#tags-competencias-empresa')
+    if (!container) return
+
+    if (competencias === null) {
+        container.textContent = 'Não foi possível carregar as competências.'
+        return
+    }
+
+    if (competencias.length === 0) {
+        container.textContent = 'Nenhuma competência informada.'
+        return
+    }
+
+    container.innerHTML = competencias
+        .map(competencia => `<span class="perfil-tag">${escaparHtml(competencia)}</span>`)
+        .join('')
 }
 
 function renderizarGraficoCompetencias(candidatos: Candidato[]): void {
@@ -267,7 +347,7 @@ function renderizarTabelaCandidatos(empresa: Empresa, candidatos: Candidato[], s
                 ${temMatchComCandidato ? candidato.nome : 'Match necessário para visualização'}
             </td>
             <td class="coluna-competencias">
-                ${candidato.competencias.join(', ')}
+                ${candidato.competencias.map(escaparHtml).join(', ')}
             </td>
             <td class="coluna-afinidade">
                 ${calcularAfinidade(candidato, empresa)}%
@@ -494,9 +574,11 @@ async function buscarVagasDaEmpresa(cnpj: string): Promise<Vaga[]> {
 
         const dados: { dados?: VagaDaApi[] } | VagaDaApi[] = await resposta.json()
         const vagas = Array.isArray(dados) ? dados : dados.dados ?? []
+        // As competências das vagas são consultadas no ms-competencias,
+        // não no payload antigo do backend principal.
         return vagas.map(vaga => ({
             ...vaga,
-            competencias: vaga.competencias ?? vaga.competencia ?? []
+            competencias: []
         }))
     } catch (erro) {
         console.error('Erro ao buscar vagas da empresa:', erro)

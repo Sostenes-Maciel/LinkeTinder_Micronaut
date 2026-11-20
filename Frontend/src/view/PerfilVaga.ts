@@ -1,8 +1,9 @@
 import type { Vaga } from "../model/Vaga.ts"
 
-type VagaDaApi = Omit<Vaga, 'competencias'> & {
-    competencias?: string[]
-    competencia?: string[]
+type VagaDaApi = Omit<Vaga, 'competencias'>
+
+interface CompetenciaResposta {
+    nome?: string
 }
 
 export async function renderPerfilVaga(vagaId: number, onVoltar?: () => void, temMatch: boolean = false): Promise<void> {
@@ -28,16 +29,49 @@ export async function renderPerfilVaga(vagaId: number, onVoltar?: () => void, te
             return
         }
 
+        const competencias = await buscarCompetenciasDaVaga(vagaId)
         const vaga: Vaga = {
             ...vagaDaApi,
-            competencias: vagaDaApi.competencias ?? vagaDaApi.competencia ?? []
+            competencias: competencias ?? []
         }
 
-        renderizarPerfilVagaHTML(app, vaga, temMatch)
+        renderizarPerfilVagaHTML(app, vaga, temMatch, competencias !== null)
         configurarEventoVoltar(onVoltar)
     } catch (erro) {
         console.error('Erro ao buscar detalhes da vaga:', erro)
         renderizarMensagem(app, 'Não foi possível carregar os detalhes da vaga.', onVoltar)
+    }
+}
+
+async function buscarCompetenciasDaVaga(idVaga: number): Promise<string[] | null> {
+    try {
+        const resposta = await fetch(
+            `http://localhost:8086/api/competencias/vagas/${encodeURIComponent(idVaga)}`
+        )
+        if (!resposta.ok) {
+            throw new Error(`Falha ao buscar competências da vaga (HTTP ${resposta.status}).`)
+        }
+
+        const dados: unknown = await resposta.json()
+        const lista = Array.isArray(dados)
+            ? dados
+            : typeof dados === 'object' && dados !== null
+            && 'dados' in dados && Array.isArray(dados.dados)
+                ? dados.dados
+                : null
+
+        if (!lista) {
+            throw new Error('Resposta inválida do ms-competencias ao consultar a vaga.')
+        }
+
+        return lista
+            .map((item: string | CompetenciaResposta) =>
+                typeof item === 'string' ? item.trim() : (item?.nome ?? '').trim()
+            )
+            .filter((nome: string) => nome.length > 0)
+    } catch (erro) {
+        console.error('Erro ao buscar competências da vaga no ms-competencias:', erro)
+        return null
     }
 }
 
@@ -76,8 +110,17 @@ function renderizarMensagem(app: HTMLDivElement, mensagem: string, onVoltar?: ()
     configurarEventoVoltar(onVoltar)
 }
 
-function renderizarPerfilVagaHTML(app: HTMLDivElement, vaga: Vaga, temMatch: boolean): void {
-    const competenciasTexto = vaga.competencias?.join(', ') || 'Nenhuma competência especificada'
+function renderizarPerfilVagaHTML(
+    app: HTMLDivElement,
+    vaga: Vaga,
+    temMatch: boolean,
+    competenciasCarregadas: boolean
+): void {
+    const competenciasTexto = !competenciasCarregadas
+        ? 'Não foi possível carregar as competências.'
+        : vaga.competencias?.length
+            ? vaga.competencias.map(escaparHtml).join(', ')
+            : 'Nenhuma competência especificada'
     const nomeEmpresa = temMatch && vaga.empresa?.nome
         ? escaparHtml(vaga.empresa.nome)
         : 'Match necessário para visualização'
