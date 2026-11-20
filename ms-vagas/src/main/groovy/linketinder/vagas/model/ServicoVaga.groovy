@@ -103,11 +103,17 @@ class ServicoVaga {
 
     private static List<String> obterCompetencias(Map<String, Object> dados) {
         Object valor = dados.competencias
-        if (valor == null) {
-            return []
-        }
+
         if (!(valor instanceof Collection)) {
-            throw new VagaInvalidoException('competencias deve ser uma lista de textos.')
+            throw new VagaInvalidoException(
+                    'competencias deve ser uma lista de textos.'
+            )
+        }
+
+        if ((valor as Collection).isEmpty()) {
+            throw new VagaInvalidoException(
+                    'A vaga deve possuir pelo menos uma competencia.'
+            )
         }
 
         List<String> competencias = []

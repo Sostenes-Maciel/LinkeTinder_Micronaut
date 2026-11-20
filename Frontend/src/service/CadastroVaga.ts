@@ -4,26 +4,39 @@ import { vincularCompetenciasVaga } from './CompetenciaApi.ts'
 import { getCountries, getStatesOfCountry } from "@countrystatecity/countries-browser"
 
 export class CadastroVagasService {
-    static async atualizar(vaga: Vaga, empresa: Pick<Empresa, 'cnpj'>): Promise<void> {
+    static async atualizar(vaga: Vaga, _empresa: Pick<Empresa, 'cnpj'>): Promise<void> {
         const competencias = vaga.competencias ?? []
-        this.validarCampos(vaga.titulo, vaga.descricao, vaga.pais, vaga.estado, vaga.areaAtuacao ?? '', competencias)
 
-        const resposta = await fetch('http://localhost:8080/api/vagas', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                id: vaga.id,
-                titulo: vaga.titulo.trim(),
-                descricao: vaga.descricao.trim(),
-                pais: vaga.pais.trim(),
-                estado: vaga.estado.trim(),
-                areaAtuacao: vaga.areaAtuacao?.trim(),
-                competencia: competencias,
-                empresa: { cnpj: empresa.cnpj.replace(/\D/g, '') }
-            })
-        })
+        this.validarCampos(
+            vaga.titulo,
+            vaga.descricao,
+            vaga.pais,
+            vaga.estado,
+            vaga.areaAtuacao ?? '',
+            competencias
+        )
+
+        const resposta = await fetch(
+            `http://localhost:8087/api/vagas/${encodeURIComponent(vaga.id)}`,
+            {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    titulo: vaga.titulo.trim(),
+                    descricao: vaga.descricao.trim(),
+                    pais: vaga.pais.trim(),
+                    estado: vaga.estado.trim(),
+                    areaAtuacao: vaga.areaAtuacao?.trim(),
+                    competencias: competencias
+                })
+            }
+        )
+
         const resultado = await resposta.json()
-        if (!resposta.ok) throw new Error(resultado.mensagem || 'Erro ao atualizar vaga.')
+
+        if (!resposta.ok) {
+            throw new Error(resultado.mensagem || 'Erro ao atualizar vaga.')
+        }
     }
 
     static async cadastrar(
@@ -51,14 +64,10 @@ export class CadastroVagasService {
             pais: pais.trim(),
             estado: estado.trim(),
             areaAtuacao: areaAtuacao.trim(),
-
-            competencia: competencias,
-
-            empresa: {
-                cnpj: empresa.cnpj.replace(/\D/g, '')
-            }
+            competencias: competencias,
+            cnpjEmpresa: empresa.cnpj.replace(/\D/g, '')
         }
-        const resposta = await fetch('http://localhost:8080/api/vagas', {
+        const resposta = await fetch('http://localhost:8087/api/vagas', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

@@ -1,6 +1,8 @@
 import type { Vaga } from "../model/Vaga.ts"
 
-type VagaDaApi = Omit<Vaga, 'competencias'>
+type VagaDaApi = Omit<Vaga, 'id' | 'competencias'> & {
+    id: number
+}
 
 interface CompetenciaResposta {
     nome?: string
@@ -13,7 +15,9 @@ export async function renderPerfilVaga(vagaId: number, onVoltar?: () => void, te
     app.innerHTML = '<section class="perfil-vaga"><p>Carregando vaga...</p></section>'
 
     try {
-        const resposta = await fetch(`http://localhost:8080/api/vagas?id=${encodeURIComponent(vagaId)}`)
+        const resposta = await fetch(
+            `http://localhost:8087/api/vagas/${encodeURIComponent(vagaId)}`
+        )
         if (resposta.status === 404) {
             renderizarMensagem(app, 'Vaga não encontrada!', onVoltar)
             return
@@ -76,28 +80,51 @@ async function buscarCompetenciasDaVaga(idVaga: number): Promise<string[] | null
 }
 
 function extrairVagaDaApi(resultado: unknown): VagaDaApi | undefined {
-    if (typeof resultado !== 'object' || resultado === null) return undefined
+    if (typeof resultado !== 'object' || resultado === null) {
+        return undefined
+    }
 
     const dados = 'dados' in resultado ? resultado.dados : resultado
-    return validarVagaDaApi(dados) ? dados : undefined
-}
 
-function validarVagaDaApi(valor: unknown): valor is VagaDaApi {
-    return typeof valor === 'object'
-        && valor !== null
-        && 'id' in valor
-        && typeof valor.id === 'number'
-        && 'titulo' in valor
-        && typeof valor.titulo === 'string'
-        && 'pais' in valor
-        && typeof valor.pais === 'string'
-        && 'estado' in valor
-        && typeof valor.estado === 'string'
-        && 'descricao' in valor
-        && typeof valor.descricao === 'string'
-        && 'empresa' in valor
-        && typeof valor.empresa === 'object'
-        && valor.empresa !== null
+    if (typeof dados !== 'object' || dados === null) {
+        return undefined
+    }
+
+    const vagaApi = dados as Record<string, unknown>
+
+    const id = Number(vagaApi.id ?? vagaApi.idVaga)
+
+    const titulo = vagaApi.titulo
+    const descricao = vagaApi.descricao
+    const pais = vagaApi.pais
+    const estado = vagaApi.estado
+    const cnpjEmpresa = vagaApi.cnpjEmpresa
+
+    if (
+        !Number.isInteger(id) ||
+        id <= 0 ||
+        typeof titulo !== 'string' ||
+        typeof descricao !== 'string' ||
+        typeof pais !== 'string' ||
+        typeof estado !== 'string' ||
+        typeof cnpjEmpresa !== 'string'
+    ) {
+        return undefined
+    }
+
+    return {
+        id,
+        titulo,
+        descricao,
+        pais,
+        estado,
+        areaAtuacao: typeof vagaApi.areaAtuacao === 'string'
+            ? vagaApi.areaAtuacao
+            : '',
+        empresa: {
+            cnpj: cnpjEmpresa
+        } as Vaga['empresa']
+    }
 }
 
 function renderizarMensagem(app: HTMLDivElement, mensagem: string, onVoltar?: () => void): void {

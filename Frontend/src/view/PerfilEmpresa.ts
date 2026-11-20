@@ -18,7 +18,14 @@ interface CompetenciaResposta {
 
 const TAMANHO_LOTE_CPFS = 500
 
-type VagaDaApi = Omit<Vaga, 'competencias'>
+type VagaDaApi = Omit<Vaga, 'id' | 'empresa' | 'competencias'> & {
+    id?: number
+    idVaga?: number
+    cnpjEmpresa?: string
+    empresa?: Vaga['empresa']
+    competencias?: string[]
+    competencia?: string[]
+}
 
 export async function renderPerfilEmpresa(
     empresa: Empresa,
@@ -1011,7 +1018,7 @@ async function buscarVagasDaEmpresa(
 ): Promise<Vaga[]> {
     try {
         const resposta = await fetch(
-            `http://localhost:8080/api/vagas?cnpj=${encodeURIComponent(cnpj)}`
+            `http://localhost:8087/api/vagas/empresas/${encodeURIComponent(cnpj)}`
         )
 
         if (!resposta.ok) {
@@ -1031,8 +1038,11 @@ async function buscarVagasDaEmpresa(
 
         return vagas.map(vaga => ({
             ...vaga,
-            competencias: []
-        }))
+            id: Number(vaga.id ?? vaga.idVaga),
+            competencias: vaga.competencias ?? vaga.competencia ?? []
+        })).filter(vaga =>
+            Number.isInteger(vaga.id) && vaga.id > 0
+        ) as unknown as Vaga[]
 
     } catch (erro) {
         console.error(

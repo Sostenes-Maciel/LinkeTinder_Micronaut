@@ -10,7 +10,9 @@ interface StatusMatchVaga {
     status: 'curtido' | 'match'
 }
 
-type VagaDaApi = Omit<Vaga, 'competencias'> & {
+type VagaDaApi = Omit<Vaga, 'id' | 'competencias'> & {
+    id?: number
+    idVaga?: number
     competencias?: string[]
     competencia?: string[]
 }
@@ -65,7 +67,7 @@ function renderizarTemplateBase(app: HTMLDivElement, animarTransicao: boolean): 
 
 async function buscarVagasDoBanco(): Promise<Vaga[]> {
     try {
-        const resposta = await fetch('http://localhost:8080/api/vagas')
+        const resposta = await fetch('http://localhost:8087/api/vagas')
         if (resposta.ok) {
             const dadosDoServidor: { dados?: VagaDaApi[] } | VagaDaApi[] = await resposta.json()
             const vagas = Array.isArray(dadosDoServidor)
@@ -74,6 +76,7 @@ async function buscarVagasDoBanco(): Promise<Vaga[]> {
 
             return vagas.map(vaga => ({
                 ...vaga,
+                id: Number(vaga.id ?? vaga.idVaga),
                 competencias: vaga.competencias ?? vaga.competencia ?? []
             }))
         }
