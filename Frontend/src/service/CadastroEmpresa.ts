@@ -2,6 +2,7 @@ import type { Empresa } from '../model/Empresa.ts'
 import { ValidarEmpresa } from './ValidarEmpresa'
 import { configurarAutocompletarCep } from './ConsultaCep.ts'
 import { mostrarNotificacaoSucesso } from '../components/Notificacao.ts'
+import { vincularCompetenciasEmpresa } from './CompetenciaApi.ts'
 import {
     getCountries,
     getStatesOfCountry
@@ -249,7 +250,12 @@ function limparErroCampo(campo: HTMLElement, erro: HTMLParagraphElement): void {
     erro.classList.remove('ativo')
 }
 
-async function processarSubmissao(formulario: HTMLFormElement, validarCep: () => Promise<void>, empresaEmEdicao?: Empresa): Promise<void> {
+async function processarSubmissao(
+    formulario: HTMLFormElement,
+    validarCep: () => Promise<void>,
+    empresaEmEdicao?: Empresa
+): Promise<void> {
+
     const mensagem = document.querySelector<HTMLParagraphElement>('#mensagem')
     const selectPais = document.querySelector<HTMLSelectElement>('#pais')
 
@@ -260,7 +266,11 @@ async function processarSubmissao(formulario: HTMLFormElement, validarCep: () =>
 
     try {
         await validarCep()
+
         const empresa = extrairEValidarDados(formulario, selectPais)
+
+        // Separa as competências dos dados cadastrais.
+        const { competencias, ...dadosEmpresa } = empresa
 
         const url = empresaEmEdicao
             ? 'http://localhost:8080/api/empresas'
@@ -271,28 +281,79 @@ async function processarSubmissao(formulario: HTMLFormElement, validarCep: () =>
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(empresa)
-        });
+            body: JSON.stringify(
+                empresaEmEdicao ? empresa : dadosEmpresa
+            )
+        })
 
         if (resposta.status === (empresaEmEdicao ? 200 : 201)) {
+
             if (empresaEmEdicao) {
-                localStorage.setItem('usuarioLogado', JSON.stringify(empresa))
+
+                localStorage.setItem(
+                    'usuarioLogado',
+                    JSON.stringify(empresa)
+                )
+
                 window.dispatchEvent(new Event('auth-change'))
-                const { renderPerfilEmpresa } = await import('../view/PerfilEmpresa.ts')
+
+                const { renderPerfilEmpresa } =
+                    await import('../view/PerfilEmpresa.ts')
+
                 await renderPerfilEmpresa(empresa)
+
                 mostrarNotificacaoSucesso('Usuário editado com sucesso!')
+
             } else {
-                exibirMensagem(mensagem, 'Empresa cadastrada com sucesso!', 'mensagem-sucesso')
+
+                // O registro da empresa já foi realizado.
+                // Agora vinculamos suas competências no microservice.
+                try {
+                    await vincularCompetenciasEmpresa(
+                        empresa.cnpj,
+                        competencias
+                    )
+
+                } catch (erroVinculo) {
+                    formulario.reset()
+
+                    exibirMensagem(
+                        mensagem,
+                        erroVinculo instanceof Error
+                            ? erroVinculo.message
+                            : 'Empresa cadastrada, mas houve falha ao vincular competências.',
+                        'mensagem-erro'
+                    )
+
+                    return
+                }
+
+                exibirMensagem(
+                    mensagem,
+                    'Empresa cadastrada com sucesso!',
+                    'mensagem-sucesso'
+                )
+
                 formulario.reset()
             }
+
         } else {
-            const erroBackend = await resposta.json();
-            exibirMensagem(mensagem, "Erro: " + (erroBackend.mensagem || "Dados inválidos."), 'mensagem-erro')
+            const erroBackend = await resposta.json()
+
+            exibirMensagem(
+                mensagem,
+                'Erro: ' + (erroBackend.mensagem || 'Dados inválidos.'),
+                'mensagem-erro'
+            )
         }
 
     } catch (erro) {
         console.error('Erro ao cadastrar empresa:', erro)
-        const textoErro = erro instanceof Error ? erro.message : 'Servidor indisponível. Verifique se o Tomcat está rodando.'
+
+        const textoErro = erro instanceof Error
+            ? erro.message
+            : 'Servidor indisponível. Verifique se o serviço está rodando.'
+
         exibirMensagem(mensagem, textoErro, 'mensagem-erro')
     }
 }

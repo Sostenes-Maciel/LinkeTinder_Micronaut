@@ -1,5 +1,6 @@
 import type { Empresa } from '../model/Empresa.ts'
 import type { Vaga } from "../model/Vaga.ts"
+import { vincularCompetenciasVaga } from './CompetenciaApi.ts'
 import { getCountries, getStatesOfCountry } from "@countrystatecity/countries-browser"
 
 export class CadastroVagasService {
@@ -35,7 +36,14 @@ export class CadastroVagasService {
         empresa: Empresa
     ): Promise<Vaga> {
 
-        this.validarCampos(titulo, descricao, pais, estado, areaAtuacao, competencias)
+        this.validarCampos(
+            titulo,
+            descricao,
+            pais,
+            estado,
+            areaAtuacao,
+            competencias
+        )
 
         const dadosVaga = {
             titulo: titulo.trim(),
@@ -44,15 +52,12 @@ export class CadastroVagasService {
             estado: estado.trim(),
             areaAtuacao: areaAtuacao.trim(),
 
-            // O backend utiliza "competencia" no singular
             competencia: competencias,
 
-            // O backend precisa apenas do CNPJ para vincular a vaga
             empresa: {
                 cnpj: empresa.cnpj.replace(/\D/g, '')
             }
         }
-
         const resposta = await fetch('http://localhost:8080/api/vagas', {
             method: 'POST',
             headers: {
@@ -64,11 +69,26 @@ export class CadastroVagasService {
         const resultado = await resposta.json()
 
         if (!resposta.ok) {
-            throw new Error(resultado.mensagem || 'Erro ao cadastrar vaga.')
+            throw new Error(
+                resultado.mensagem || 'Erro ao cadastrar vaga.'
+            )
+        }
+        const dadosResposta = resultado.dados ?? resultado
+
+        const idVaga = Number(
+            dadosResposta.id ?? dadosResposta.idVaga
+        )
+
+        if (!Number.isInteger(idVaga) || idVaga <= 0) {
+            throw new Error(
+                'A vaga foi cadastrada, mas o backend não retornou um ID válido. Não tente cadastrá-la novamente.'
+            )
         }
 
+        await vincularCompetenciasVaga(idVaga, competencias)
+
         return {
-            id: resultado.id,
+            id: idVaga,
             titulo: dadosVaga.titulo,
             descricao: dadosVaga.descricao,
             pais: dadosVaga.pais,

@@ -2,6 +2,7 @@ import type { Candidato } from '../model/Candidato.ts'
 import { ValidarCandidato } from './ValidarCandidato'
 import { configurarAutocompletarCep } from './ConsultaCep.ts'
 import { mostrarNotificacaoSucesso } from '../components/Notificacao.ts'
+import { vincularCompetenciasCandidato } from './CompetenciaApi.ts'
 import {
     getCountries,
     getStatesOfCountry
@@ -210,8 +211,6 @@ function configurarEventosFormulario(validarCep: () => Promise<void>, candidatoE
         await processarSubmissao(formulario, validarCep, candidatoEmEdicao)
     })
 
-    // Validação em tempo real: ao sair do campo (blur) e ao digitar (input)
-    // CEP, País e Estado são gerenciados pelo auto-completar dos Correios e biblioteca de países
     configurarValidacaoPorCampo('nome', (valor) => ValidarCandidato.validarNome(valor))
     configurarValidacaoPorCampo('email', (valor) => ValidarCandidato.validarEmail(valor))
     configurarValidacaoPorCampo('idade', (valor) => ValidarCandidato.validarIdade(Number(valor)))
@@ -239,7 +238,6 @@ function configurarValidacaoPorCampo(campoId: string, validar: (valor: string) =
         }
     })
 
-    // Ao digitar novamente: limpar erro
     campo.addEventListener('input', () => {
         limparErroCampo(campo, erro)
     })
@@ -257,7 +255,12 @@ function limparErroCampo(campo: HTMLElement, erro: HTMLParagraphElement): void {
     erro.classList.remove('ativo')
 }
 
-async function processarSubmissao(formulario: HTMLFormElement, validarCep: () => Promise<void>, candidatoEmEdicao?: Candidato): Promise<void> {
+async function processarSubmissao(
+    formulario: HTMLFormElement,
+    validarCep: () => Promise<void>,
+    candidatoEmEdicao?: Candidato
+): Promise<void> {
+
     const mensagem = document.querySelector<HTMLParagraphElement>('#mensagem')
     const selectPais = document.querySelector<HTMLSelectElement>('#pais')
 
@@ -268,7 +271,10 @@ async function processarSubmissao(formulario: HTMLFormElement, validarCep: () =>
 
     try {
         await validarCep()
+
         const candidato = extrairEValidarDados(formulario, selectPais)
+
+        const { competencias, ...dadosCandidato } = candidato
 
         const url = candidatoEmEdicao
             ? 'http://localhost:8080/api/candidatos'
@@ -279,28 +285,77 @@ async function processarSubmissao(formulario: HTMLFormElement, validarCep: () =>
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify(candidato)
-        });
+            body: JSON.stringify(
+                candidatoEmEdicao ? candidato : dadosCandidato
+            )
+        })
 
         if (resposta.status === (candidatoEmEdicao ? 200 : 201)) {
+
             if (candidatoEmEdicao) {
-                localStorage.setItem('usuarioLogado', JSON.stringify(candidato))
+
+                localStorage.setItem(
+                    'usuarioLogado',
+                    JSON.stringify(candidato)
+                )
+
                 window.dispatchEvent(new Event('auth-change'))
-                const { renderPerfilCandidato } = await import('../view/PerfilCandidato.ts')
+
+                const { renderPerfilCandidato } =
+                    await import('../view/PerfilCandidato.ts')
+
                 renderPerfilCandidato(candidato)
+
                 mostrarNotificacaoSucesso('Usuário editado com sucesso!')
+
             } else {
-                exibirMensagem(mensagem, 'Candidato cadastrado com sucesso!', 'mensagem-sucesso')
+
+                try {
+                    await vincularCompetenciasCandidato(
+                        candidato.cpf,
+                        competencias
+                    )
+
+                } catch (erroVinculo) {
+                    formulario.reset()
+
+                    exibirMensagem(
+                        mensagem,
+                        erroVinculo instanceof Error
+                            ? erroVinculo.message
+                            : 'Candidato cadastrado, mas houve falha ao vincular competências.',
+                        'mensagem-erro'
+                    )
+
+                    return
+                }
+
+                exibirMensagem(
+                    mensagem,
+                    'Candidato cadastrado com sucesso!',
+                    'mensagem-sucesso'
+                )
+
                 formulario.reset()
             }
+
         } else {
-            const erroBackend = await resposta.json();
-            exibirMensagem(mensagem, "Erro: " + (erroBackend.mensagem || "Dados inválidos."), 'mensagem-erro')
+            const erroBackend = await resposta.json()
+
+            exibirMensagem(
+                mensagem,
+                'Erro: ' + (erroBackend.mensagem || 'Dados inválidos.'),
+                'mensagem-erro'
+            )
         }
 
     } catch (erro) {
         console.error('Erro ao cadastrar candidato:', erro)
-        const textoErro = erro instanceof Error ? erro.message : 'Servidor indisponível. Verifique se o Tomcat está rodando.'
+
+        const textoErro = erro instanceof Error
+            ? erro.message
+            : 'Servidor indisponível. Verifique se o serviço está rodando.'
+
         exibirMensagem(mensagem, textoErro, 'mensagem-erro')
     }
 }
