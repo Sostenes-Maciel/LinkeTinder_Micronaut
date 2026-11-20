@@ -40,6 +40,13 @@ class CompetenciaDAO extends AbstractDAO<String> implements ICompetenciaDAO {
     }
 
     @Override
+    String buscarNomePadronizado(String nome) {
+        String sql = "SELECT nome FROM competencia WHERE lower(nome) = lower(?) LIMIT 1"
+        List<String> resultado = executarQuery(sql, [nome])
+        return resultado.isEmpty() ? null : resultado[0]
+    }
+
+    @Override
     void garantirCompetencia(String nome) {
         String sql = "INSERT INTO competencia (nome) VALUES (?) ON CONFLICT (nome) DO NOTHING"
         executarUpdate(sql, [nome])

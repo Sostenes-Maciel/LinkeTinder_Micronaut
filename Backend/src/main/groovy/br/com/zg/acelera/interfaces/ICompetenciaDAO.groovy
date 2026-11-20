@@ -5,6 +5,11 @@ interface ICompetenciaDAO {
     List<String> listarTodos()
     void atualizar(String nomeAtual, String novoNome)
     void excluir(String nome)
+    /**
+     * Retorna o nome da competência já cadastrada no banco (case-insensitive)
+     * ou null se não existir. Usado para evitar duplicatas como Java/JAVA/JavA.
+     */
+    String buscarNomePadronizado(String nome)
     void garantirCompetencia(String nome)
 
     void adicionarAoCandidato(String cpf, String nomeCompetencia)

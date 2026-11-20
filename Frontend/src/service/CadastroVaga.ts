@@ -111,6 +111,28 @@ export class CadastroVagasService {
         if (competencias.length === 0) {
             throw new Error('A vaga deve possuir pelo menos uma competência.')
         }
+
+        const normalizadas = competencias.map(c => c.trim())
+        const chavesVistas = new Set<string>()
+        const duplicadas: string[] = []
+
+        for (const competencia of normalizadas) {
+            if (!competencia) {
+                throw new Error('Uma das competências está vazia.')
+            }
+            const chave = competencia.toLowerCase()
+            if (chavesVistas.has(chave)) {
+                duplicadas.push(competencia)
+            } else {
+                chavesVistas.add(chave)
+            }
+        }
+
+        if (duplicadas.length > 0) {
+            throw new Error(
+                `Competência repetida (ignorando maiúsculas/minúsculas): ${duplicadas.join(', ')}.`
+            )
+        }
     }
 }
 

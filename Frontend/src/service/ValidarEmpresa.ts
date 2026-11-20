@@ -86,14 +86,29 @@ export class ValidarEmpresa {
             throw new Error('Informe no máximo 10 competências.')
         }
 
-        for (const competencia of competencias) {
-            const tag = competencia.trim()
-            if (!tag) {
+        const normalizadas = competencias.map(c => c.trim())
+        const chavesVistas = new Set<string>()
+        const duplicadas: string[] = []
+
+        for (const competencia of normalizadas) {
+            if (!competencia) {
                 throw new Error('Uma das competências/tags está vazia.')
             }
-            if (!REGEX_TAG.test(tag)) {
-                throw new Error(`A tag "${tag}" contém caracteres inválidos. Use apenas letras, números, espaços e hífens.`)
+            if (!REGEX_TAG.test(competencia)) {
+                throw new Error(`A tag "${competencia}" contém caracteres inválidos. Use apenas letras, números, espaços e hífens.`)
             }
+            const chave = competencia.toLowerCase()
+            if (chavesVistas.has(chave)) {
+                duplicadas.push(competencia)
+            } else {
+                chavesVistas.add(chave)
+            }
+        }
+
+        if (duplicadas.length > 0) {
+            throw new Error(
+                `Competência repetida (ignorando maiúsculas/minúsculas): ${duplicadas.join(', ')}.`
+            )
         }
     }
 

@@ -81,15 +81,8 @@ class RepositorioPostgresCadastro implements RepositorioCadastro {
         }
 
         competencias.each { String competencia ->
-            long idCompetencia = conexao.prepareStatement(sqlCompetencia).withCloseable { instrucao ->
-                instrucao.setString(1, competencia)
-                instrucao.executeQuery().withCloseable { resultado ->
-                    if (!resultado.next()) {
-                        throw new SQLException('Nao foi possivel obter o id da competencia.')
-                    }
-                    resultado.getLong('id_competencia')
-                }
-            }
+            String nomePadronizado = obterNomePadronizado(conexao, competencia)
+            long idCompetencia = garantirEObterIdCompetencia(conexao, nomePadronizado)
 
             conexao.prepareStatement(sqlVinculo).withCloseable { instrucao ->
                 instrucao.setString(1, identificador)
@@ -97,6 +90,58 @@ class RepositorioPostgresCadastro implements RepositorioCadastro {
                 instrucao.executeUpdate()
             }
         }
+    }
+
+    /**
+     * Retorna o nome da competência já cadastrada no banco (case-insensitive)
+     * ou o próprio nome informado (trimado) caso ainda não exista.
+     */
+    private static String obterNomePadronizado(Connection conexao, String competencia) {
+        String nomeLimpo = competencia.trim()
+        String sql = "SELECT nome FROM competencia WHERE lower(nome) = lower(?) LIMIT 1"
+        conexao.prepareStatement(sql).withCloseable { instrucao ->
+            instrucao.setString(1, nomeLimpo)
+            instrucao.executeQuery().withCloseable { resultado ->
+                if (resultado.next()) {
+                    return resultado.getString("nome")
+                }
+            }
+        }
+        return nomeLimpo
+    }
+
+    private static long garantirEObterIdCompetencia(Connection conexao, String nome) {
+        String sql = '''
+            INSERT INTO competencia (nome) VALUES (?)
+            ON CONFLICT (nome) DO NOTHING
+            RETURNING id_competencia
+        '''
+        long id = conexao.prepareStatement(sql).withCloseable { instrucao ->
+            instrucao.setString(1, nome)
+            instrucao.executeQuery().withCloseable { resultado ->
+                if (resultado.next()) {
+                    return resultado.getLong('id_competencia')
+                }
+                return -1L
+            }
+        }
+        if (id == -1L) {
+            // Conflito: outra transação inseriu entre o select e o insert; busca o existente
+            String sqlBusca = "SELECT id_competencia FROM competencia WHERE nome = ? LIMIT 1"
+            id = conexao.prepareStatement(sqlBusca).withCloseable { instrucao ->
+                instrucao.setString(1, nome)
+                instrucao.executeQuery().withCloseable { resultado ->
+                    if (resultado.next()) {
+                        return resultado.getLong('id_competencia')
+                    }
+                    return -1L
+                }
+            }
+        }
+        if (id == -1L) {
+            throw new SQLException('Nao foi possivel obter o id da competencia.')
+        }
+        return id
     }
 
     private <T> T emTransacao(Closure<T> operacao) {

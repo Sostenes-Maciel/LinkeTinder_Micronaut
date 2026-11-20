@@ -23,8 +23,10 @@ class GerenciadorDeVagasService {
         Integer idVaga = vaga.id
 
         vaga.competencia.each { competencia ->
-            competenciaDAO.garantirCompetencia(competencia)
-            competenciaDAO.adicionarAVaga(idVaga, competencia)
+            String nomePadronizado = normalizarCompetencia(competencia)
+            validarCompetenciaNaoDuplicadaParaVaga(idVaga, nomePadronizado)
+            competenciaDAO.garantirCompetencia(nomePadronizado)
+            competenciaDAO.adicionarAVaga(idVaga, nomePadronizado)
         }
 
         return idVaga
@@ -75,8 +77,10 @@ class GerenciadorDeVagasService {
         }
 
         vaga.competencia.each { competencia ->
-            competenciaDAO.garantirCompetencia(competencia)
-            competenciaDAO.adicionarAVaga(vaga.id, competencia)
+            String nomePadronizado = normalizarCompetencia(competencia)
+            validarCompetenciaNaoDuplicadaParaVaga(vaga.id, nomePadronizado)
+            competenciaDAO.garantirCompetencia(nomePadronizado)
+            competenciaDAO.adicionarAVaga(vaga.id, nomePadronizado)
 
         }
     }
@@ -130,5 +134,29 @@ class GerenciadorDeVagasService {
     static List<String> extrairCompetencias(String entrada) {
         if (!entrada) return []
         return entrada.tokenize(',').collect { it.trim() }.findAll { it }
+    }
+
+    /**
+     * Retorna o nome da competência já cadastrada no banco (case-insensitive)
+     * ou o próprio nome informado (trimado) caso ainda não exista.
+     */
+    private String normalizarCompetencia(String competencia) {
+        String nomeLimpo = competencia?.trim()
+        if (!nomeLimpo) {
+            return nomeLimpo
+        }
+        String existente = competenciaDAO.buscarNomePadronizado(nomeLimpo)
+        return existente != null ? existente : nomeLimpo
+    }
+
+    private void validarCompetenciaNaoDuplicadaParaVaga(Integer idVaga, String nomeCompetencia) {
+        List<String> atuais = competenciaDAO.listarDaVaga(idVaga)
+        String chave = nomeCompetencia.toLowerCase(Locale.ROOT)
+        boolean jaExiste = atuais.any { it?.toLowerCase(Locale.ROOT) == chave }
+        if (jaExiste) {
+            throw new IllegalArgumentException(
+                    "A competência '${nomeCompetencia}' já está cadastrada para esta vaga."
+            )
+        }
     }
 }

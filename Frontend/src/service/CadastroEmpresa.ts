@@ -264,7 +264,7 @@ async function processarSubmissao(formulario: HTMLFormElement, validarCep: () =>
 
         const url = empresaEmEdicao
             ? 'http://localhost:8080/api/empresas'
-            : 'http://localhost:8081/api/empresas'
+            : 'http://localhost:8085/api/empresas'
 
         const resposta = await fetch(url, {
             method: empresaEmEdicao ? 'PUT' : 'POST',

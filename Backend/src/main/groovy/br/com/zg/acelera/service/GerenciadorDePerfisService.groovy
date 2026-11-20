@@ -170,8 +170,10 @@ class GerenciadorDePerfisService {
 
 
     void adicionarCompetenciaAoCandidato(Candidato candidato, String competencia) {
-        competenciaDAO.garantirCompetencia(competencia)
-        competenciaDAO.adicionarAoCandidato(candidato.cpf, competencia)
+        String nomePadronizado = normalizarCompetencia(competencia)
+        validarCompetenciaNaoDuplicadaParaCandidato(candidato.cpf, nomePadronizado)
+        competenciaDAO.garantirCompetencia(nomePadronizado)
+        competenciaDAO.adicionarAoCandidato(candidato.cpf, nomePadronizado)
     }
 
     void removerCompetenciaDoCandidato(Candidato candidato, String competencia) {
@@ -180,12 +182,49 @@ class GerenciadorDePerfisService {
 
 
     void adicionarCompetenciaAEmpresa(Empresa empresa, String competencia) {
-        competenciaDAO.garantirCompetencia(competencia)
-        competenciaDAO.adicionarAoEmpresa(empresa.cnpj, competencia)
+        String nomePadronizado = normalizarCompetencia(competencia)
+        validarCompetenciaNaoDuplicadaParaEmpresa(empresa.cnpj, nomePadronizado)
+        competenciaDAO.garantirCompetencia(nomePadronizado)
+        competenciaDAO.adicionarAoEmpresa(empresa.cnpj, nomePadronizado)
     }
 
     void removerCompetenciaDaEmpresa(Empresa empresa, String competencia) {
         competenciaDAO.removerDaEmpresa(empresa.cnpj, competencia)
+    }
+
+    /**
+     * Retorna o nome da competência já cadastrada no banco (case-insensitive)
+     * ou o próprio nome informado (trimado) caso ainda não exista.
+     */
+    private String normalizarCompetencia(String competencia) {
+        String nomeLimpo = competencia?.trim()
+        if (!nomeLimpo) {
+            return nomeLimpo
+        }
+        String existente = competenciaDAO.buscarNomePadronizado(nomeLimpo)
+        return existente != null ? existente : nomeLimpo
+    }
+
+    private void validarCompetenciaNaoDuplicadaParaCandidato(String cpf, String nomeCompetencia) {
+        List<String> atuais = competenciaDAO.listarDoCandidato(cpf)
+        String chave = nomeCompetencia.toLowerCase(Locale.ROOT)
+        boolean jaExiste = atuais.any { it?.toLowerCase(Locale.ROOT) == chave }
+        if (jaExiste) {
+            throw new IllegalArgumentException(
+                    "A competência '${nomeCompetencia}' já está cadastrada para este candidato."
+            )
+        }
+    }
+
+    private void validarCompetenciaNaoDuplicadaParaEmpresa(String cnpj, String nomeCompetencia) {
+        List<String> atuais = competenciaDAO.listarDaEmpresa(cnpj)
+        String chave = nomeCompetencia.toLowerCase(Locale.ROOT)
+        boolean jaExiste = atuais.any { it?.toLowerCase(Locale.ROOT) == chave }
+        if (jaExiste) {
+            throw new IllegalArgumentException(
+                    "A competência '${nomeCompetencia}' já está cadastrada para esta empresa."
+            )
+        }
     }
 
     private void sincronizarCompetenciasCandidato(Candidato candidato) {

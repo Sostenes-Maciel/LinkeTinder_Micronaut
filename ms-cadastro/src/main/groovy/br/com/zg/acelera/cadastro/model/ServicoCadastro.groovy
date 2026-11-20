@@ -69,7 +69,8 @@ class ServicoCadastro {
                 throw new CadastroInvalidoException('cada competencia deve ser um texto nao vazio.')
             }
             String nome = competencia.trim()
-            if (!competencias.contains(nome)) {
+            String chave = nome.toLowerCase(Locale.ROOT)
+            if (!competencias.any { it.toLowerCase(Locale.ROOT) == chave }) {
                 competencias.add(nome)
             }
         }
