@@ -1,0 +1,7 @@
+micronaut:
+  application:
+    name: curtidasmatches
+datasources:
+  default:
+    driver-class-name: org.postgresql.Driver
+    db-type: postgres
