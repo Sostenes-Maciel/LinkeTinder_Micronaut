@@ -30,100 +30,98 @@ class CurtidaMatchController {
         this.servico = servico
     }
 
-
     @Get('/curtidas')
     HttpResponse listarCurtidas() {
         return HttpResponse.ok(servico.listarCurtidas())
     }
-
 
     @Post('/curtidas')
     HttpResponse registrarCurtida(@Body Map<String, Object> dados) {
         return processarCurtida(dados)
     }
 
-    @Post('/matches')
-    HttpResponse registrarCurtidaMatch(@Body Map<String, Object> dados) {
-        return processarCurtida(dados)
-    }
+    @Get('/matches')
+    HttpResponse listarMatches(
+            @QueryValue('cpf') @Nullable String cpf,
+            @QueryValue('cnpj') @Nullable String cnpj,
+            @QueryValue('completo') @Nullable Boolean completo
+    ) {
 
-    private HttpResponse processarCurtida(Map<String, Object> dados) {
+        if (cpf != null && !cpf.trim().isEmpty()) {
 
-        Map<String, Object> payload = dados ?: [:]
-
-        String autor = payload.autor?.toString()?.trim()?.toUpperCase()
-
-        switch (autor) {
-
-            case 'CANDIDATO':
-                // Curtida do candidato não recebe CNPJ.
-                payload.cnpjEmpresa = null
-                break
-
-            case 'EMPRESA':
-                if (!payload.cnpjEmpresa) {
-                    throw new CurtidaMatchInvalidoException(
-                            'CNPJ da empresa é obrigatório.'
-                    )
-                }
-                break
-
-            default:
-                throw new CurtidaMatchInvalidoException(
-                        'Autor inválido. Informe CANDIDATO ou EMPRESA.'
+            if (Boolean.TRUE == completo) {
+                return HttpResponse.ok(
+                        servico.listarMatchesCompletosCandidato(cpf)
                 )
+            }
+
+            return HttpResponse.ok(
+                    servico.listarStatusCurtidasCandidato(cpf)
+            )
         }
 
-        Map<String, Object> registrada = servico.registrarCurtida(payload)
+        if (cnpj != null && !cnpj.trim().isEmpty()) {
 
-        boolean deuMatch = registrada.match == true
+            if (Boolean.TRUE == completo) {
+                return HttpResponse.ok(
+                        servico.listarMatchesCompletosEmpresa(cnpj)
+                )
+            }
 
-        Map<String, Object> resposta = [
-                mensagem: deuMatch
-                        ? 'MATCH ENCONTRADO!'
-                        : 'Curtida registrada com sucesso!',
-                match: deuMatch,
-                dados: registrada
-        ]
+            return HttpResponse.ok(
+                    servico.listarStatusCurtidasEmpresa(cnpj)
+            )
+        }
 
-        return HttpResponse.status(HttpStatus.CREATED).body(resposta)
+        return HttpResponse.ok(servico.listarMatches(null, null))
     }
 
+    @Post('/matches')
+    HttpResponse registrarCurtidaViaMatches(
+            @Body Map<String, Object> dados
+    ) {
+        return processarCurtida(dados)
+    }
 
     @Delete('/matches')
     HttpResponse removerCurtida(@Body Map<String, Object> dados) {
 
-        Map<String, Object> payload = dados ?: [:]
+        String autor = dados.autor?.toString()?.trim()?.toUpperCase()
+        String cpf = dados.cpfCandidato?.toString()?.replaceAll(/\D/, '')
+        String cnpj = dados.cnpjEmpresa?.toString()?.replaceAll(/\D/, '')
+        Integer idVaga = dados.idVaga != null
+                ? dados.idVaga.toString().toInteger()
+                : null
 
-        String autor = payload.autor?.toString()?.trim()?.toUpperCase()
-        String cpfCandidato = payload.cpfCandidato?.toString()
-        Integer idVaga = obterInteiro(payload.idVaga, 'idVaga')
+        if (!cpf || idVaga == null) {
+            throw new CurtidaMatchInvalidoException(
+                    'CPF e ID da vaga são obrigatórios.'
+            )
+        }
 
         boolean removida
 
-        switch (autor) {
+        if (autor == 'CANDIDATO') {
+            removida = servico.removerCurtidaCandidato(cpf, idVaga)
 
-            case 'CANDIDATO':
-                removida = servico.removerCurtidaCandidato(
-                        cpfCandidato,
-                        idVaga
-                )
-                break
+        } else if (autor == 'EMPRESA') {
 
-            case 'EMPRESA':
-                String cnpjEmpresa = payload.cnpjEmpresa?.toString()
-
-                removida = servico.removerCurtidaEmpresa(
-                        cnpjEmpresa,
-                        cpfCandidato,
-                        idVaga
-                )
-                break
-
-            default:
+            if (!cnpj) {
                 throw new CurtidaMatchInvalidoException(
-                        'Autor inválido. Informe CANDIDATO ou EMPRESA.'
+                        'CNPJ da empresa é obrigatório.'
                 )
+            }
+
+            removida = servico.removerCurtidaEmpresa(
+                    cnpj,
+                    cpf,
+                    idVaga
+            )
+
+        } else {
+            throw new CurtidaMatchInvalidoException(
+                    'Informe um autor válido: CANDIDATO ou EMPRESA.'
+            )
         }
 
         if (!removida) {
@@ -137,76 +135,65 @@ class CurtidaMatchController {
         ])
     }
 
+    private HttpResponse processarCurtida(Map<String, Object> dados) {
 
-    @Get('/matches')
-    HttpResponse listarMatches(
-            @QueryValue @Nullable String cpf,
-            @QueryValue @Nullable String cnpj
-    ) {
+        String autor = dados.autor?.toString()?.trim()?.toUpperCase()
 
-        if (cpf && cnpj) {
+        if (!(autor in ['CANDIDATO', 'EMPRESA'])) {
             throw new CurtidaMatchInvalidoException(
-                    'Informe CPF ou CNPJ, não ambos.'
+                    'Informe um autor válido: CANDIDATO ou EMPRESA.'
             )
         }
 
-        if (cpf) {
-            return HttpResponse.ok(
-                    servico.listarStatusCurtidasCandidato(cpf)
-            )
+        Map<String, Object> payload = new LinkedHashMap<>(dados)
+
+        // Recrutador não participa desta versão.
+        payload.remove('recrutadorId')
+
+        if (autor == 'CANDIDATO') {
+            payload.cnpjEmpresa = null
         }
 
-        if (cnpj) {
-            return HttpResponse.ok(
-                    servico.listarStatusCurtidasEmpresa(cnpj)
-            )
-        }
+        Map<String, Object> registrada =
+                servico.registrarCurtida(payload)
 
-        return HttpResponse.ok(servico.listarMatches())
+        boolean temMatch = registrada.match == true
+
+        return HttpResponse.status(HttpStatus.CREATED).body([
+                mensagem: temMatch
+                        ? 'MATCH ENCONTRADO!'
+                        : 'Curtida registrada com sucesso!',
+                match: temMatch,
+                dados: registrada
+        ])
     }
-
-
-    private static Integer obterInteiro(Object valor, String campo) {
-
-        try {
-            Integer numero = valor instanceof Number
-                    ? (valor as Number).intValue()
-                    : Integer.parseInt(valor?.toString()?.trim())
-
-            if (numero <= 0) {
-                throw new NumberFormatException()
-            }
-
-            return numero
-
-        } catch (Exception ignored) {
-            throw new CurtidaMatchInvalidoException(
-                    "${campo} deve ser um número inteiro maior que zero."
-            )
-        }
-    }
-
 
     @Error(CurtidaMatchInvalidoException)
-    static HttpResponse tratarInvalido(CurtidaMatchInvalidoException ex) {
-        return HttpResponse.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                .body([mensagem: ex.message])
+    static HttpResponse tratarInvalido(
+            CurtidaMatchInvalidoException ex
+    ) {
+        return HttpResponse.status(HttpStatus.UNPROCESSABLE_ENTITY).body([
+                mensagem: ex.message
+        ])
     }
 
     @Error(SQLException)
     static HttpResponse tratarErroSql(SQLException ex) {
 
         if (ex.SQLState == '23505') {
-            return HttpResponse.status(HttpStatus.CONFLICT)
-                    .body([mensagem: 'Registro duplicado em curtida ou match_vaga.'])
+            return HttpResponse.status(HttpStatus.CONFLICT).body([
+                    mensagem: 'Registro duplicado em curtida ou match_vaga.'
+            ])
         }
 
         if (ex.SQLState == '23503') {
-            return HttpResponse.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                    .body([mensagem: 'Chave estrangeira inválida. Verifique candidato, vaga e empresa.'])
+            return HttpResponse.status(HttpStatus.UNPROCESSABLE_ENTITY).body([
+                    mensagem: 'Chave estrangeira inválida (CPF, ID da vaga ou CNPJ).'
+            ])
         }
 
-        return HttpResponse.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body([mensagem: 'Falha ao persistir curtida ou match no banco.'])
+        return HttpResponse.status(HttpStatus.INTERNAL_SERVER_ERROR).body([
+                mensagem: 'Falha ao persistir curtida ou match no banco.'
+        ])
     }
 }

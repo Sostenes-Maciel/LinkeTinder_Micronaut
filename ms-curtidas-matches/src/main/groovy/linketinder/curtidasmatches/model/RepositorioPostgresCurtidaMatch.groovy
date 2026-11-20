@@ -18,9 +18,6 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
         this.dataSource = dataSource
     }
 
-    // =========================================================
-    // LISTAGEM DE CURTIDAS
-    // =========================================================
 
     @Override
     List<Map<String, Object>> listarCurtidas() {
@@ -46,9 +43,6 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
         }
     }
 
-    // =========================================================
-    // REGISTRO DE CURTIDAS
-    // =========================================================
 
     @Override
     Map<String, Object> registrarCurtida(Map<String, Object> dados) {
@@ -69,8 +63,6 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
             Integer idVaga = dados.idVaga as Integer
             String cnpjInformado = dados.cnpjEmpresa as String
 
-            // Identifica a empresa proprietária da vaga.
-            // Também verifica se a vaga pertence à empresa informada.
             String cnpjResolvido = resolverCnpjEmpresa(
                     conexao,
                     cnpjInformado,
@@ -83,13 +75,10 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
                 )
             }
 
-            // Candidato: CNPJ permanece NULL.
-            // Empresa: CNPJ recebe o CNPJ proprietário da vaga.
             String cnpjPersistido = cnpjInformado == null
                     ? null
                     : cnpjResolvido
 
-            // Evita registrar a mesma curtida duas vezes.
             String sqlVerificar = cnpjPersistido == null
                     ? '''
                     SELECT id_curtida
@@ -146,7 +135,6 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
                         instrucao.setNull(3, Types.VARCHAR)
                     }
 
-                    // Recrutadores não participam desta versão.
                     instrucao.setNull(4, Types.INTEGER)
 
                     instrucao.executeQuery().withCloseable { ResultSet resultado ->
@@ -161,7 +149,6 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
                 }
             }
 
-            // Verifica se existe reciprocidade entre candidato e empresa.
             Map<String, Object> matchGerado =
                     avaliarEInserirMatchSeReciproco(
                             conexao,
@@ -187,9 +174,6 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
         }
     }
 
-    // =========================================================
-    // REMOÇÃO DE CURTIDAS
-    // =========================================================
 
     @Override
     boolean removerCurtidaCandidato(String cpfCandidato, int idVaga) {
@@ -249,9 +233,6 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
         }
     }
 
-    // =========================================================
-    // LISTAGEM DE MATCHES
-    // =========================================================
 
     @Override
     List<Map<String, Object>> listarMatches() {
@@ -328,9 +309,6 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
         }
     }
 
-    // =========================================================
-    // CONSULTA DE STATUS DAS CURTIDAS
-    // =========================================================
 
     @Override
     List<Map<String, Object>> listarStatusCurtidasCandidato(String cpfCandidato) {
@@ -414,10 +392,6 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
         }
     }
 
-    // =========================================================
-    // REGISTRO DE MATCH
-    // =========================================================
-
     @Override
     Map<String, Object> registrarMatch(Map<String, Object> dados) {
         String sqlBusca = '''
@@ -479,9 +453,6 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
         }
     }
 
-    // =========================================================
-    // RESOLUÇÃO E VALIDAÇÃO DA EMPRESA DA VAGA
-    // =========================================================
 
     private static String resolverCnpjEmpresa(
             Connection conexao,
@@ -522,9 +493,6 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
         return cnpjDaVaga
     }
 
-    // =========================================================
-    // VERIFICAÇÃO DE RECIPROCIDADE E GERAÇÃO DO MATCH
-    // =========================================================
 
     private static Map<String, Object> avaliarEInserirMatchSeReciproco(
             Connection conexao,
@@ -536,8 +504,7 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
             return null
         }
 
-        // Curtida realizada pelo candidato.
-        // No backend original, cnpj_empresa fica NULL.
+
         String sqlCurtidaCandidato = '''
             SELECT 1
             FROM curtida
@@ -548,8 +515,7 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
             LIMIT 1
         '''
 
-        // Curtida realizada pela empresa.
-        // O CNPJ é preenchido e recrutador_id permanece NULL.
+
         String sqlCurtidaEmpresa = '''
             SELECT 1
             FROM curtida
@@ -580,7 +546,6 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
             return null
         }
 
-        // Confere se o match já existe.
         String sqlBuscaMatch = '''
             SELECT id_match, cpf_candidato, cnpj_empresa, id_vaga
             FROM match_vaga
@@ -637,7 +602,6 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
             }
         }
 
-        // Recupera o registro, inclusive em caso de concorrência.
         return conexao.prepareStatement(sqlBuscaMatch).withCloseable { PreparedStatement instrucao ->
 
             instrucao.setString(1, cpfCandidato)
@@ -654,9 +618,6 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
         }
     }
 
-    // =========================================================
-    // CONSULTA AUXILIAR
-    // =========================================================
 
     private static boolean existeRegistro(
             Connection conexao,
@@ -675,9 +636,6 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
         }
     }
 
-    // =========================================================
-    // CONVERSÃO DOS RESULTADOS
-    // =========================================================
 
     private static Map<String, Object> montarMapaCurtida(ResultSet resultado) {
         int idVagaVal = resultado.getInt('id_vaga')
@@ -704,9 +662,6 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
         ] as Map<String, Object>
     }
 
-    // =========================================================
-    // TRANSAÇÕES
-    // =========================================================
 
     private <T> T emTransacao(Closure<T> operacao) {
         dataSource.connection.withCloseable { Connection conexao ->
@@ -730,5 +685,201 @@ class RepositorioPostgresCurtidaMatch implements RepositorioCurtidaMatch {
                 throw exception
             }
         }
+    }
+
+    @Override
+    List<Map<String, Object>> listarMatchesCompletosPorCandidato(String cpfCandidato) {
+        String sql = '''
+        SELECT
+            m.id_match,
+            m.cpf_candidato,
+            c.nome AS nome_candidato,
+            e.cnpj AS cnpj_empresa,
+            e.nome AS nome_empresa,
+            v.id_vaga,
+            v.titulo AS titulo_vaga,
+            v.pais AS pais_vaga,
+            v.estado AS estado_vaga
+        FROM match_vaga m
+        JOIN candidato c ON c.cpf = m.cpf_candidato
+        JOIN empresa e ON e.cnpj = m.cnpj_empresa
+        JOIN vaga v ON v.id_vaga = m.id_vaga
+        WHERE m.cpf_candidato = ?
+        ORDER BY m.id_match DESC
+    '''
+
+        dataSource.connection.withCloseable { Connection conexao ->
+            List<Map<String, Object>> matches = []
+
+            conexao.prepareStatement(sql).withCloseable { PreparedStatement instrucao ->
+                instrucao.setString(1, cpfCandidato)
+
+                instrucao.executeQuery().withCloseable { ResultSet resultado ->
+                    while (resultado.next()) {
+                        matches.add(montarMapaMatchCompleto(resultado))
+                    }
+                }
+            }
+
+            return matches
+        }
+    }
+
+    @Override
+    List<Map<String, Object>> listarCurtidasPendentesPorCandidato(String cpfCandidato) {
+        String sql = '''
+        SELECT
+            v.id_vaga,
+            v.titulo AS titulo_vaga,
+            v.pais AS pais_vaga,
+            v.estado AS estado_vaga
+        FROM curtida cu
+        JOIN vaga v ON v.id_vaga = cu.id_vaga
+        WHERE cu.cpf_candidato = ?
+          AND cu.cnpj_empresa IS NULL
+          AND cu.recrutador_id IS NULL
+          AND cu.id_vaga IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM match_vaga m
+              WHERE m.cpf_candidato = cu.cpf_candidato
+                AND m.id_vaga = cu.id_vaga
+          )
+        ORDER BY cu.id_curtida DESC
+    '''
+
+        dataSource.connection.withCloseable { Connection conexao ->
+            List<Map<String, Object>> curtidas = []
+
+            conexao.prepareStatement(sql).withCloseable { PreparedStatement instrucao ->
+                instrucao.setString(1, cpfCandidato)
+
+                instrucao.executeQuery().withCloseable { ResultSet resultado ->
+                    while (resultado.next()) {
+                        curtidas.add([
+                                vaga: montarMapaVaga(resultado)
+                        ] as Map<String, Object>)
+                    }
+                }
+            }
+
+            return curtidas
+        }
+    }
+
+    @Override
+    List<Map<String, Object>> listarMatchesCompletosPorEmpresa(String cnpjEmpresa) {
+        String sql = '''
+        SELECT
+            m.id_match,
+            m.cpf_candidato,
+            c.nome AS nome_candidato,
+            e.cnpj AS cnpj_empresa,
+            e.nome AS nome_empresa,
+            v.id_vaga,
+            v.titulo AS titulo_vaga,
+            v.pais AS pais_vaga,
+            v.estado AS estado_vaga
+        FROM match_vaga m
+        JOIN candidato c ON c.cpf = m.cpf_candidato
+        JOIN empresa e ON e.cnpj = m.cnpj_empresa
+        JOIN vaga v ON v.id_vaga = m.id_vaga
+        WHERE m.cnpj_empresa = ?
+        ORDER BY m.id_match DESC
+    '''
+
+        dataSource.connection.withCloseable { Connection conexao ->
+            List<Map<String, Object>> matches = []
+
+            conexao.prepareStatement(sql).withCloseable { PreparedStatement instrucao ->
+                instrucao.setString(1, cnpjEmpresa)
+
+                instrucao.executeQuery().withCloseable { ResultSet resultado ->
+                    while (resultado.next()) {
+                        matches.add(montarMapaMatchCompleto(resultado))
+                    }
+                }
+            }
+
+            return matches
+        }
+    }
+
+    @Override
+    List<Map<String, Object>> listarCurtidasPendentesPorEmpresa(String cnpjEmpresa) {
+        String sql = '''
+        SELECT
+            cu.cpf_candidato,
+            v.id_vaga,
+            v.titulo AS titulo_vaga,
+            v.pais AS pais_vaga,
+            v.estado AS estado_vaga
+        FROM curtida cu
+        JOIN vaga v ON v.id_vaga = cu.id_vaga
+        WHERE cu.cnpj_empresa = ?
+          AND cu.recrutador_id IS NULL
+          AND cu.id_vaga IS NOT NULL
+          AND NOT EXISTS (
+              SELECT 1
+              FROM match_vaga m
+              WHERE m.cnpj_empresa = cu.cnpj_empresa
+                AND m.cpf_candidato = cu.cpf_candidato
+                AND m.id_vaga = cu.id_vaga
+          )
+        ORDER BY cu.id_curtida DESC
+    '''
+
+        dataSource.connection.withCloseable { Connection conexao ->
+            List<Map<String, Object>> curtidas = []
+
+            conexao.prepareStatement(sql).withCloseable { PreparedStatement instrucao ->
+                instrucao.setString(1, cnpjEmpresa)
+
+                instrucao.executeQuery().withCloseable { ResultSet resultado ->
+                    while (resultado.next()) {
+                        curtidas.add([
+                                candidato: [
+                                        competencias: []
+                                ],
+                                vaga: montarMapaVaga(resultado)
+                        ] as Map<String, Object>)
+                    }
+                }
+            }
+
+            return curtidas
+        }
+    }
+    private static Map<String, Object> montarMapaMatchCompleto(ResultSet resultado) {
+        return [
+                idMatch: resultado.getInt('id_match'),
+
+                candidato: [
+                        cpf: resultado.getString('cpf_candidato'),
+                        nome: resultado.getString('nome_candidato'),
+                        competencias: []
+                ],
+
+                empresa: [
+                        cnpj: resultado.getString('cnpj_empresa'),
+                        nome: resultado.getString('nome_empresa')
+                ],
+
+                vaga: [
+                        id: resultado.getInt('id_vaga'),
+                        titulo: resultado.getString('titulo_vaga'),
+                        pais: resultado.getString('pais_vaga'),
+                        estado: resultado.getString('estado_vaga')
+                ]
+        ] as Map<String, Object>
+    }
+
+    private static Map<String, Object> montarMapaVaga(ResultSet resultado) {
+        return [
+                id: resultado.getInt('id_vaga'),
+                titulo: resultado.getString('titulo_vaga'),
+                pais: resultado.getString('pais_vaga'),
+                estado: resultado.getString('estado_vaga')
+        ] as Map<String, Object>
     }
 }

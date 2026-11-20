@@ -1,7 +1,14 @@
 micronaut:
   application:
-    name: curtidasmatches
+    name: ms-curtidas-matches
+  server:
+    port: ${PORT:8088}
+    cors:
+      enabled: true
+
 datasources:
   default:
-    driver-class-name: org.postgresql.Driver
-    db-type: postgres
+    url: jdbc:postgresql://localhost:5432/LinkeTinder_BD
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driverClassName: org.postgresql.Driver

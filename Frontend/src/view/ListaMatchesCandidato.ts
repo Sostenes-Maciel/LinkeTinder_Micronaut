@@ -10,7 +10,7 @@ export async function renderListaMatchesCandidato(candidato: Candidato): Promise
 
     try {
         const cpfLimpo = candidato.cpf.replace(/\D/g, '')
-        const resposta = await fetch(`http://localhost:8080/api/matches?cpf=${cpfLimpo}&completo=true`)
+        const resposta = await fetch(`http://localhost:8088/api/matches?cpf=${cpfLimpo}&completo=true`)
 
         let matches: Match[] = []
         let curtidasPendentes: Curtida[] = []

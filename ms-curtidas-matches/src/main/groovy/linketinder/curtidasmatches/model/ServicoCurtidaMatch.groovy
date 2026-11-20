@@ -281,4 +281,46 @@ class ServicoCurtidaMatch {
                 "${campo} deve ser um numero inteiro valido."
         )
     }
+
+    Map<String, Object> listarMatchesCompletosCandidato(String cpfCandidato) {
+        String cpf = cpfCandidato?.replaceAll(/\D/, '')
+
+        if (!cpf || cpf.length() != 11) {
+            throw new CurtidaMatchInvalidoException(
+                    'CPF inválido para consultar os matches.'
+            )
+        }
+
+        List<Map<String, Object>> matches =
+                repositorio.listarMatchesCompletosPorCandidato(cpf)
+
+        List<Map<String, Object>> curtidasPendentes =
+                repositorio.listarCurtidasPendentesPorCandidato(cpf)
+
+        return [
+                matches: matches,
+                curtidasPendentes: curtidasPendentes
+        ] as Map<String, Object>
+    }
+
+    Map<String, Object> listarMatchesCompletosEmpresa(String cnpjEmpresa) {
+        String cnpj = cnpjEmpresa?.replaceAll(/\D/, '')
+
+        if (!cnpj || cnpj.length() != 14) {
+            throw new CurtidaMatchInvalidoException(
+                    'CNPJ inválido para consultar os matches.'
+            )
+        }
+
+        List<Map<String, Object>> matches =
+                repositorio.listarMatchesCompletosPorEmpresa(cnpj)
+
+        List<Map<String, Object>> curtidasPendentes =
+                repositorio.listarCurtidasPendentesPorEmpresa(cnpj)
+
+        return [
+                matches: matches,
+                curtidasPendentes: curtidasPendentes
+        ] as Map<String, Object>
+    }
 }

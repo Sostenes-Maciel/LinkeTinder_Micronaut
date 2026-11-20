@@ -24,5 +24,13 @@ interface RepositorioCurtidaMatch {
 
     List<Map<String, Object>> listarStatusCurtidasEmpresa(String cnpjEmpresa)
 
+    List<Map<String, Object>> listarMatchesCompletosPorCandidato(String cpfCandidato)
+
+    List<Map<String, Object>> listarCurtidasPendentesPorCandidato(String cpfCandidato)
+
+    List<Map<String, Object>> listarMatchesCompletosPorEmpresa(String cnpjEmpresa)
+
+    List<Map<String, Object>> listarCurtidasPendentesPorEmpresa(String cnpjEmpresa)
+
     Map<String, Object> registrarMatch(Map<String, Object> dados)
 }

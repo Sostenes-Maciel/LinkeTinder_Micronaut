@@ -797,7 +797,7 @@ function configurarBotoesCurtirCandidato(
                 }
 
                 const resposta = await fetch(
-                    'http://localhost:8080/api/matches',
+                    'http://localhost:8088/api/matches',
                     {
                         method: metodoHTTP,
                         headers: {
@@ -987,7 +987,7 @@ async function buscarStatusMatches(
 ): Promise<StatusMatch[]> {
     try {
         const resposta = await fetch(
-            `http://localhost:8080/api/matches?cnpj=${cnpj}`
+            `http://localhost:8088/api/matches?cnpj=${cnpj}`
         )
 
         if (resposta.ok) {

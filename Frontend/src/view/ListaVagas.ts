@@ -90,7 +90,7 @@ async function buscarVagasDoBanco(): Promise<Vaga[]> {
 async function buscarStatusMatchesCandidato(cpf: string): Promise<StatusMatchVaga[]> {
     try {
         // Assume que sua API suporta passar o CPF do candidato para retornar o status
-        const resposta = await fetch(`http://localhost:8080/api/matches?cpf=${cpf}`)
+        const resposta = await fetch(`http://localhost:8088/api/matches?cpf=${cpf}`)
         if (resposta.ok) {
             const dados = await resposta.json()
             return dados.dados ? dados.dados : dados
@@ -214,7 +214,7 @@ function configurarBotoesCurtir(candidato?: Candidato): void {
                     idVaga: vagaId
                 }
 
-                const resposta = await fetch('http://localhost:8080/api/matches', {
+                const resposta = await fetch('http://localhost:8088/api/matches', {
                     method: metodoHTTP,
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(payload)

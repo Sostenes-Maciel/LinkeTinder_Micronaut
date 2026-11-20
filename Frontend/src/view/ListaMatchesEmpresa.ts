@@ -6,20 +6,27 @@ export async function renderListaMatchesEmpresa(empresa: Empresa): Promise<void>
     const app = document.querySelector<HTMLDivElement>('#app')
     if (!app) return
 
-    app.innerHTML = `<section class="lista-matches tela-com-transicao"><h2>Carregando matches...</h2></section>`
+    app.innerHTML = `
+        <section class="lista-matches tela-com-transicao">
+            <h2>Carregando matches...</h2>
+        </section>
+    `
 
     try {
         const cnpjLimpo = empresa.cnpj.replace(/\D/g, '')
-        const resposta = await fetch(`http://localhost:8080/api/matches?cnpj=${cnpjLimpo}&completo=true`)
 
-        let matches: Match[] = []
-        let curtidasPendentes: Curtida[] = []
+        const resposta = await fetch(
+            `http://localhost:8088/api/matches?cnpj=${cnpjLimpo}&completo=true`
+        )
 
-        if (resposta.ok) {
-            const dados = await resposta.json()
-            matches = dados.matches || []
-            curtidasPendentes = dados.curtidasPendentes || []
+        if (!resposta.ok) {
+            throw new Error(`Falha ao buscar matches: HTTP ${resposta.status}`)
         }
+
+        const dados = await resposta.json()
+
+        const matches: Match[] = dados.matches || []
+        const curtidasPendentes: Curtida[] = dados.curtidasPendentes || []
 
         app.innerHTML = `
             <section class="lista-matches tela-com-transicao">
@@ -32,8 +39,10 @@ export async function renderListaMatchesEmpresa(empresa: Empresa): Promise<void>
                 ${gerarSecaoMatchesRealizados(matches)}
             </section>
         `
+
     } catch (erro) {
-        console.error("Erro ao buscar matches completos da empresa:", erro)
+        console.error('Erro ao buscar matches completos da empresa:', erro)
+
         app.innerHTML = `
             <section class="lista-matches">
                 <h2>Erro ao conectar com o servidor.</h2>
@@ -56,12 +65,15 @@ function gerarSecaoCurtidasPendentes(curtidas: Curtida[]): string {
     const cardsHtml = curtidas.map(curtida => `
         <div class="card-match card-curtida-pendente">
             <h3>♥ Curtida pendente</h3>
-            ${curtida.vaga?.titulo ? `<p><strong>Vaga:</strong> ${curtida.vaga.titulo}</p>` : ''}
+
+            ${curtida.vaga?.titulo
+        ? `<p><strong>Vaga:</strong> ${escaparHtml(curtida.vaga.titulo)}</p>`
+        : ''
+    }
+
             <p>
-                <strong>Candidato:</strong> ${curtida.candidato?.nome ?? 'Match necessário para visualização'}
-            </p>
-            <p>
-                <strong>Recrutador:</strong> ${escaparHtml(curtida.recrutador?.nome ?? 'Não identificado')}
+                <strong>Candidato:</strong>
+                Match necessário para visualização
             </p>
         </div>
     `).join('')
@@ -82,15 +94,17 @@ function gerarSecaoMatchesRealizados(matches: Match[]): string {
 
     const cardsHtml = matches.map(match => `
         <div class="card-match card-match-confirmado">
-            <h3>🤝 ${match.candidato?.nome ?? 'Candidato'}</h3>
+            <h3>🤝 ${escaparHtml(match.candidato?.nome ?? 'Candidato')}</h3>
+
             <p>
-                <strong>Vaga:</strong> ${match.vaga?.titulo ?? 'Vaga'}
+                <strong>Vaga:</strong>
+                ${escaparHtml(match.vaga?.titulo ?? 'Vaga')}
             </p>
+
             <p>
-                <strong>Local:</strong> ${match.vaga?.pais ?? ''} - ${match.vaga?.estado ?? ''}
-            </p>
-            <p>
-                <strong>Recrutador:</strong> ${escaparHtml(match.recrutador?.nome ?? 'Não identificado')}
+                <strong>Local:</strong>
+                ${escaparHtml(match.vaga?.pais ?? '')} -
+                ${escaparHtml(match.vaga?.estado ?? '')}
             </p>
         </div>
     `).join('')
