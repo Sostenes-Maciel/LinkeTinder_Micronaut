@@ -1,14 +1,12 @@
 micronaut:
   application:
     name: ms-competencias
+
   server:
     port: ${PORT:8086}
     cors:
       enabled: true
-      configurations:
-        default:
-          allowed-origins:
-            - ${FRONTEND_ORIGIN:http://localhost:5173}
+
 
 datasources:
   default:
