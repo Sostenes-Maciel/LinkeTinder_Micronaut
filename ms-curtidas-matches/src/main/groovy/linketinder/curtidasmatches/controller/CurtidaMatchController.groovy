@@ -168,32 +168,40 @@ class CurtidaMatchController {
         ])
     }
 
-    @Error(CurtidaMatchInvalidoException)
-    static HttpResponse tratarInvalido(
-            CurtidaMatchInvalidoException ex
-    ) {
-        return HttpResponse.status(HttpStatus.UNPROCESSABLE_ENTITY).body([
-                mensagem: ex.message
-        ])
-    }
+    @Error(exception = Throwable)
+    HttpResponse tratarErro(Throwable ex) {
 
-    @Error(SQLException)
-    static HttpResponse tratarErroSql(SQLException ex) {
+        Throwable causa = ex
 
-        if (ex.SQLState == '23505') {
-            return HttpResponse.status(HttpStatus.CONFLICT).body([
-                    mensagem: 'Registro duplicado em curtida ou match_vaga.'
-            ])
+        while (causa != null) {
+
+            if (causa instanceof CurtidaMatchInvalidoException) {
+                return HttpResponse.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                        .body([mensagem: causa.message])
+            }
+
+            if (causa instanceof SQLException) {
+                SQLException erroSql = (SQLException) causa
+                String estadoSql = erroSql.getSQLState()
+
+                if (estadoSql == '23505') {
+                    return HttpResponse.status(HttpStatus.CONFLICT)
+                            .body([mensagem: 'Registro duplicado em curtida ou match_vaga.'])
+                }
+
+                if (estadoSql == '23503') {
+                    return HttpResponse.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                            .body([mensagem: 'Chave estrangeira inválida (CPF, ID da vaga ou CNPJ).'])
+                }
+
+                return HttpResponse.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body([mensagem: 'Falha ao persistir curtida ou match no banco.'])
+            }
+
+            causa = causa.getCause()
         }
 
-        if (ex.SQLState == '23503') {
-            return HttpResponse.status(HttpStatus.UNPROCESSABLE_ENTITY).body([
-                    mensagem: 'Chave estrangeira inválida (CPF, ID da vaga ou CNPJ).'
-            ])
-        }
-
-        return HttpResponse.status(HttpStatus.INTERNAL_SERVER_ERROR).body([
-                mensagem: 'Falha ao persistir curtida ou match no banco.'
-        ])
+        return HttpResponse.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body([mensagem: 'Falha ao persistir curtida ou match no banco.'])
     }
 }
