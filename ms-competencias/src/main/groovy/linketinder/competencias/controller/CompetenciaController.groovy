@@ -75,17 +75,19 @@ class CompetenciaController {
         return HttpResponse.status(HttpStatus.CREATED).body(servico.vincularVaga(dados))
     }
 
-    @Error(CompetenciaInvalidoException)
-    static HttpResponse tratarCompetenciaInvalida(CompetenciaInvalidoException ex) {
-        return HttpResponse.status(HttpStatus.UNPROCESSABLE_ENTITY).body([mensagem: ex.message])
+    @Error(exception = CompetenciaInvalidoException)
+    HttpResponse tratarCompetenciaInvalida(CompetenciaInvalidoException ex) {
+        return HttpResponse.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body([mensagem: ex.message])
     }
 
-    @Error(SQLException)
-    static HttpResponse tratarErroSql(SQLException ex) {
+    @Error(exception = SQLException)
+    HttpResponse tratarErroSql(SQLException ex) {
         if (ex.SQLState == '23505') {
             return HttpResponse.status(HttpStatus.CONFLICT)
                     .body([mensagem: 'Registro duplicado de competencia ou vinculo.'])
         }
+
         return HttpResponse.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body([mensagem: 'Falha ao persistir competencia no banco.'])
     }
