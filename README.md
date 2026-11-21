@@ -456,6 +456,8 @@ Cada serviço possui uma responsabilidade específica:
 | `ms-vagas` | Cadastro, consulta, atualização e exclusão de vagas. | 8087 |
 | `ms-curtidas-match` | Gerenciamento de curtidas e matches entre candidatos e empresas. | 8088 |
 
+**Observação:** o perfil do recrutador não foi contemplado na migração para a arquitetura de microsserviços nesta etapa.
+
 ### Tecnologias utilizadas
 
 - **Java e Groovy:** linguagens utilizadas no backend.
