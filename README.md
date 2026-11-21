@@ -443,6 +443,81 @@ Foi implementada validação com expressões regulares (Regex) em TypeScript nos
 
 ---
 
+# Atualização: Arquitetura de Microsserviços
+
+O backend do Linketinder foi atualizado para uma arquitetura composta por quatro microsserviços independentes, desenvolvidos com **Micronaut**, utilizando **Groovy**, **Gradle** e **PostgreSQL**.
+
+Cada serviço possui uma responsabilidade específica:
+
+| Microsserviço | Responsabilidade | Porta |
+|---|---|---|
+| `ms-cadastro` | Cadastro de candidatos e empresas. | 8085 |
+| `ms-competencias` | Gerenciamento e associação de competências. | 8086 |
+| `ms-vagas` | Cadastro, consulta, atualização e exclusão de vagas. | 8087 |
+| `ms-curtidas-match` | Gerenciamento de curtidas e matches entre candidatos e empresas. | 8088 |
+
+### Tecnologias utilizadas
+
+- **Java e Groovy:** linguagens utilizadas no backend.
+- **Micronaut:** framework para desenvolvimento dos microsserviços e APIs REST.
+- **Gradle:** gerenciamento de dependências e execução dos projetos.
+- **PostgreSQL:** banco de dados relacional.
+- **Spock:** framework utilizado nos testes unitários, de API e de integração.
+
+## Como executar os microsserviços
+
+### Pré-requisitos
+
+- Java instalado e configurado.
+- PostgreSQL em execução.
+- Banco de dados `LinkeTinder_BD` criado e configurado.
+- Credenciais e conexão com o banco configuradas no `application.yml` de cada microsserviço.
+
+### Inicialização
+
+Cada microsserviço deve ser executado individualmente, em um terminal separado.
+
+**1. ms-cadastro**
+```bash
+cd ms-cadastro
+./gradlew run
+```
+
+**2. ms-competencias**
+```bash
+cd ms-competencias
+./gradlew run
+```
+
+**3. ms-vagas**
+```bash
+cd ms-vagas
+./gradlew run
+```
+
+**4. ms-curtidas-match**
+```bash
+cd ms-curtidas-match
+./gradlew run
+```
+
+Após a inicialização, os serviços estarão disponíveis nas respectivas portas:
+
+- Cadastro: `http://localhost:8085`
+- Competências: `http://localhost:8086`
+- Vagas: `http://localhost:8087`
+- Curtidas e Matches: `http://localhost:8088`
+
+### Execução dos testes
+
+Para executar os testes de um microsserviço, acesse sua pasta e utilize:
+
+```bash
+./gradlew test
+```
+
+**Importante:** os quatro microsserviços precisam estar em execução para que todas as funcionalidades do frontend que dependem deles funcionem corretamente.
+
 👤 Autor
 
 Sóstenes Marques Maciel
