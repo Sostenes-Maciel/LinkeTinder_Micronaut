@@ -61,22 +61,40 @@ class VagaController {
         return HttpResponse.noContent()
     }
 
-    @Error(VagaInvalidoException)
-    static HttpResponse tratarVagaInvalida(VagaInvalidoException ex) {
-        return HttpResponse.status(HttpStatus.UNPROCESSABLE_ENTITY).body([mensagem: ex.message])
-    }
+    @Error(exception = Throwable)
+    HttpResponse tratarErro(Throwable ex) {
 
-    @Error(SQLException)
-    static HttpResponse tratarErroSql(SQLException ex) {
-        if (ex.SQLState == '23505') {
-            return HttpResponse.status(HttpStatus.CONFLICT)
-                    .body([mensagem: 'Ja existe uma vaga com esses dados.'])
+        Throwable causa = ex
+
+        while (causa != null) {
+
+            if (causa instanceof VagaInvalidoException) {
+                return HttpResponse.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                        .body([mensagem: causa.message])
+            }
+
+            if (causa instanceof SQLException) {
+                SQLException erroSql = (SQLException) causa
+                String estadoSql = erroSql.getSQLState()
+
+                if (estadoSql == '23505') {
+                    return HttpResponse.status(HttpStatus.CONFLICT)
+                            .body([mensagem: 'Ja existe uma vaga com esses dados.'])
+                }
+
+                if (estadoSql == '23503') {
+                    return HttpResponse.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                            .body([mensagem: 'Empresa informada (cnpjEmpresa) nao encontrada no banco.'])
+                }
+
+                return HttpResponse.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body([mensagem: 'Falha ao persistir vaga no banco.'])
+            }
+
+            causa = causa.getCause()
         }
-        if (ex.SQLState == '23503') {
-            return HttpResponse.status(HttpStatus.UNPROCESSABLE_ENTITY)
-                    .body([mensagem: 'Empresa informada (cnpjEmpresa) nao encontrada no banco.'])
-        }
+
         return HttpResponse.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body([mensagem: 'Falha ao persistir vaga no banco.'])
+                .body([mensagem: 'Falha ao processar a requisicao.'])
     }
 }

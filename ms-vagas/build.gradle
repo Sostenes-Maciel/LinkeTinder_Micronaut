@@ -26,6 +26,8 @@ dependencies {
     runtimeOnly("org.postgresql:postgresql")
     runtimeOnly("org.yaml:snakeyaml")
     testImplementation("io.micronaut:micronaut-http-client")
+    testImplementation("org.apache.groovy:groovy-json:4.0.22")
+    testImplementation("net.bytebuddy:byte-buddy:1.18.17")
 }
 
 

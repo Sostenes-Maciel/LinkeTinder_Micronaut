@@ -104,42 +104,48 @@ class ServicoVaga {
     private static List<String> obterCompetencias(Map<String, Object> dados) {
         Object valor = dados.competencias
 
-        if (valor == null) {
-            throw new VagaInvalidoException(
-                    'competencias e obrigatorio.'
-            )
-        }
-
         if (!(valor instanceof Collection)) {
             throw new VagaInvalidoException(
                     'competencias deve ser uma lista de textos.'
             )
         }
 
+        Collection colecao = (Collection) valor
+
+        if (colecao.isEmpty()) {
+            throw new VagaInvalidoException(
+                    'A vaga deve possuir pelo menos uma competencia.'
+            )
+        }
+
         List<String> competencias = []
 
-        (valor as Collection).each { Object competencia ->
+        colecao.each { Object item ->
 
-            if (!(competencia instanceof String) || !competencia.trim()) {
+            if (!(item instanceof String)) {
                 throw new VagaInvalidoException(
                         'cada competencia deve ser um texto nao vazio.'
                 )
             }
 
-            String nome = competencia.trim()
+            String texto = (String) item
+            String nome = texto.trim()
+
+            if (nome.isEmpty()) {
+                throw new VagaInvalidoException(
+                        'cada competencia deve ser um texto nao vazio.'
+                )
+            }
+
             String chave = nome.toLowerCase(Locale.ROOT)
 
-            if (!competencias.any {
-                it.toLowerCase(Locale.ROOT) == chave
-            }) {
+            boolean duplicada = competencias.any { String existente ->
+                existente.toLowerCase(Locale.ROOT) == chave
+            }
+
+            if (!duplicada) {
                 competencias.add(nome)
             }
-        }
-
-        if (competencias.isEmpty()) {
-            throw new VagaInvalidoException(
-                    'A vaga deve possuir pelo menos uma competencia.'
-            )
         }
 
         return competencias
