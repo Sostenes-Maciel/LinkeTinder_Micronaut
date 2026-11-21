@@ -37,17 +37,19 @@ class CadastroController {
         return HttpResponse.status(HttpStatus.CREATED).body(resultado)
     }
 
-    @Error(CadastroInvalidoException)
-    static HttpResponse tratarCadastroInvalido(CadastroInvalidoException ex) {
-        return HttpResponse.status(HttpStatus.UNPROCESSABLE_ENTITY).body([mensagem: ex.message])
+    @Error(exception = CadastroInvalidoException)
+    HttpResponse tratarCadastroInvalido(CadastroInvalidoException ex) {
+        return HttpResponse.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                .body([mensagem: ex.message])
     }
 
-    @Error(SQLException)
-    static HttpResponse tratarErroSql(SQLException ex) {
+    @Error(exception = SQLException)
+    HttpResponse tratarErroSql(SQLException ex) {
         if (ex.SQLState == '23505') {
             return HttpResponse.status(HttpStatus.CONFLICT)
                     .body([mensagem: 'Ja existe um cadastro com esse identificador ou email.'])
         }
+
         return HttpResponse.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body([mensagem: 'Falha ao persistir o cadastro.'])
     }
