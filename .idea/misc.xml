@@ -7,6 +7,7 @@
     <file type="web" url="file://$PROJECT_DIR$/ms-cadastro" />
     <file type="web" url="file://$PROJECT_DIR$/ms-competencias" />
     <file type="web" url="file://$PROJECT_DIR$/ms-curtidas-matches" />
+    <file type="web" url="file://$PROJECT_DIR$/ms-emails/ms-emails" />
     <file type="web" url="file://$PROJECT_DIR$/ms-vagas" />
   </component>
   <component name="KubernetesApiProvider"><![CDATA[{}]]></component>
