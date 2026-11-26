@@ -12,11 +12,14 @@ import io.micronaut.test.extensions.spock.annotation.MicronautTest
 import jakarta.inject.Inject
 import linketinder.vagas.model.RepositorioVaga
 import spock.lang.Specification
+import linketinder.vagas.mensageria.NotificacaoVagaProducer
 
 import java.sql.SQLException
 
 @MicronautTest
 class VagaApiSpec extends Specification {
+
+
 
     @Inject
     @Client("/")
@@ -25,9 +28,17 @@ class VagaApiSpec extends Specification {
     @Inject
     RepositorioVaga repositorio
 
+    @Inject
+    NotificacaoVagaProducer notificacaoVagaProducer
+
     @MockBean(RepositorioVaga)
     RepositorioVaga mockRepositorio() {
         Mock(RepositorioVaga)
+    }
+
+    @MockBean(NotificacaoVagaProducer)
+    NotificacaoVagaProducer mockNotificacaoVagaProducer() {
+        Mock(NotificacaoVagaProducer)
     }
 
     private static Object lerJson(String corpo) {
@@ -187,6 +198,12 @@ class VagaApiSpec extends Specification {
                     recebidos.titulo == 'Desenvolvedor Java' &&
                     recebidos.competencias == ['Java', 'Groovy']
         }) >> vagaCriada
+
+        1 * notificacaoVagaProducer.enviarNovaVaga({ Map evento ->
+            evento.nome == 'Desenvolvedor Java' &&
+                    evento.local == 'Pernambuco - Brasil' &&
+                    evento.competencias == ['Java', 'Groovy']
+        })
 
         resposta.status == HttpStatus.CREATED
         lerJson(resposta.body()) == vagaCriada

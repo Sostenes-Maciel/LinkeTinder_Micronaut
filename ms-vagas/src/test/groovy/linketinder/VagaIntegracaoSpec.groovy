@@ -1,3 +1,4 @@
+// Testes de integracao do microsservico de vagas com PostgreSQL.
 package linketinder.vagas
 
 import groovy.json.JsonSlurper
@@ -7,14 +8,15 @@ import io.micronaut.http.MediaType
 import io.micronaut.http.client.HttpClient
 import io.micronaut.http.client.annotation.Client
 import io.micronaut.http.client.exceptions.HttpClientResponseException
+import io.micronaut.test.annotation.MockBean
 import io.micronaut.test.extensions.spock.annotation.MicronautTest
 import jakarta.inject.Inject
+import linketinder.vagas.mensageria.NotificacaoVagaProducer
 import spock.lang.Specification
 
 import javax.sql.DataSource
 import java.sql.Connection
 import java.sql.ResultSet
-import java.util.UUID
 
 @MicronautTest(transactional = false)
 class VagaIntegracaoSpec extends Specification {
@@ -25,6 +27,14 @@ class VagaIntegracaoSpec extends Specification {
     @Inject
     @Client("/")
     HttpClient cliente
+
+    @Inject
+    NotificacaoVagaProducer notificacaoVagaProducer
+
+    @MockBean(NotificacaoVagaProducer)
+    NotificacaoVagaProducer mockNotificacaoVagaProducer() {
+        Mock(NotificacaoVagaProducer)
+    }
 
     private Integer idVagaCriada
     private List<String> competenciasTeste = []
@@ -37,20 +47,13 @@ class VagaIntegracaoSpec extends Specification {
         return '"' + identificador.replace('"', '""') + '"'
     }
 
-    /**
-     * Localiza dinamicamente a tabela e a coluna referenciadas
-     * pela chave estrangeira vaga.cnpj_empresa.
-     */
     private String buscarCnpjEmpresaDisponivel() {
-
         dataSource.connection.withCloseable { Connection conexao ->
-
             Map<String, String> referencia = null
 
             conexao.metaData
                     .getImportedKeys(conexao.catalog, null, 'vaga')
                     .withCloseable { ResultSet resultado ->
-
                         while (resultado.next()) {
                             if (resultado.getString('FKCOLUMN_NAME') == 'cnpj_empresa') {
                                 referencia = [
@@ -76,9 +79,7 @@ class VagaIntegracaoSpec extends Specification {
                     ' FROM ' + tabela + ' LIMIT 1'
 
             return conexao.createStatement().withCloseable { instrucao ->
-
                 instrucao.executeQuery(sql).withCloseable { consulta ->
-
                     assert consulta.next():
                             'É necessário ter pelo menos uma empresa cadastrada para executar os testes de escrita.'
 
@@ -88,14 +89,7 @@ class VagaIntegracaoSpec extends Specification {
         }
     }
 
-    /**
-     * Cria uma vaga real pelo endpoint HTTP.
-     *
-     * Todos os valores dinâmicos são construídos por concatenação
-     * de Strings, evitando objetos GStringImpl no payload JSON.
-     */
     private Map<String, Object> criarVaga() {
-
         String token = UUID.randomUUID().toString().replace('-', '')
 
         String competenciaJava = 'TesteJava-' + token
@@ -136,7 +130,6 @@ class VagaIntegracaoSpec extends Specification {
     }
 
     private List<String> buscarCompetenciasPersistidas(int idVaga) {
-
         String sql = '''
             SELECT c.nome
             FROM competencia c
@@ -147,13 +140,10 @@ class VagaIntegracaoSpec extends Specification {
         '''
 
         dataSource.connection.withCloseable { Connection conexao ->
-
             conexao.prepareStatement(sql).withCloseable { instrucao ->
-
                 instrucao.setInt(1, idVaga)
 
                 instrucao.executeQuery().withCloseable { resultado ->
-
                     List<String> competencias = []
 
                     while (resultado.next()) {
@@ -167,17 +157,13 @@ class VagaIntegracaoSpec extends Specification {
     }
 
     private int contarVagasNoBanco(int idVaga) {
-
         dataSource.connection.withCloseable { Connection conexao ->
-
             conexao.prepareStatement(
                     'SELECT COUNT(*) FROM vaga WHERE id_vaga = ?'
             ).withCloseable { instrucao ->
-
                 instrucao.setInt(1, idVaga)
 
                 instrucao.executeQuery().withCloseable { resultado ->
-
                     resultado.next()
                     return resultado.getInt(1)
                 }
@@ -185,20 +171,12 @@ class VagaIntegracaoSpec extends Specification {
         }
     }
 
-    // ---------------------------------------------------------
-    // CONEXÃO
-    // ---------------------------------------------------------
-
     def "deve estabelecer conexao com PostgreSQL"() {
-
         when:
         int resultado = dataSource.connection.withCloseable {
             Connection conexao ->
-
                 conexao.createStatement().withCloseable { instrucao ->
-
                     instrucao.executeQuery('SELECT 1').withCloseable { consulta ->
-
                         consulta.next()
                         consulta.getInt(1)
                     }
@@ -209,12 +187,7 @@ class VagaIntegracaoSpec extends Specification {
         resultado == 1
     }
 
-    // ---------------------------------------------------------
-    // GET
-    // ---------------------------------------------------------
-
     def "GET deve consultar todas as vagas no PostgreSQL"() {
-
         when:
         def resposta = cliente.toBlocking().exchange(
                 HttpRequest.GET('/api/vagas'),
@@ -231,7 +204,6 @@ class VagaIntegracaoSpec extends Specification {
     }
 
     def "GET por ID deve retornar uma vaga persistida"() {
-
         given:
         def criada = criarVaga()
         int idVaga = criada.idVaga as int
@@ -253,7 +225,6 @@ class VagaIntegracaoSpec extends Specification {
     }
 
     def "GET por empresa deve retornar suas vagas persistidas"() {
-
         given:
         def criada = criarVaga()
         String cnpj = criada.cnpjEmpresa as String
@@ -274,7 +245,6 @@ class VagaIntegracaoSpec extends Specification {
     }
 
     def "GET deve retornar HTTP 422 para vaga inexistente"() {
-
         when:
         cliente.toBlocking().exchange(
                 HttpRequest.GET('/api/vagas/2147483647'),
@@ -293,12 +263,7 @@ class VagaIntegracaoSpec extends Specification {
         corpo.mensagem.contains('nao encontrada')
     }
 
-    // ---------------------------------------------------------
-    // POST
-    // ---------------------------------------------------------
-
     def "POST deve cadastrar vaga e persistir seus dados e competencias"() {
-
         when:
         def criada = criarVaga()
 
@@ -314,12 +279,7 @@ class VagaIntegracaoSpec extends Specification {
                 competenciasTeste.sort()
     }
 
-    // ---------------------------------------------------------
-    // PUT
-    // ---------------------------------------------------------
-
     def "PUT deve atualizar dados e competencias da vaga no PostgreSQL"() {
-
         given:
         def criada = criarVaga()
         int idVaga = criada.idVaga as int
@@ -368,15 +328,12 @@ class VagaIntegracaoSpec extends Specification {
         and:
         String tituloPersistido = dataSource.connection.withCloseable {
             Connection conexao ->
-
                 conexao.prepareStatement(
                         'SELECT titulo FROM vaga WHERE id_vaga = ?'
                 ).withCloseable { instrucao ->
-
                     instrucao.setInt(1, idVaga)
 
                     instrucao.executeQuery().withCloseable { consulta ->
-
                         assert consulta.next()
                         consulta.getString('titulo')
                     }
@@ -386,12 +343,7 @@ class VagaIntegracaoSpec extends Specification {
         tituloPersistido == 'Vaga atualizada pela integracao'
     }
 
-    // ---------------------------------------------------------
-    // DELETE
-    // ---------------------------------------------------------
-
     def "DELETE deve remover vaga e vinculos de competencias do PostgreSQL"() {
-
         given:
         def criada = criarVaga()
         int idVaga = criada.idVaga as int
@@ -411,20 +363,12 @@ class VagaIntegracaoSpec extends Specification {
         buscarCompetenciasPersistidas(idVaga).isEmpty()
     }
 
-    // ---------------------------------------------------------
-    // LIMPEZA
-    // ---------------------------------------------------------
-
     def cleanup() {
-
         dataSource.connection.withCloseable { Connection conexao ->
-
             if (idVagaCriada != null) {
-
                 conexao.prepareStatement(
                         'DELETE FROM vaga_competencia WHERE id_vaga = ?'
                 ).withCloseable { instrucao ->
-
                     instrucao.setInt(1, idVagaCriada)
                     instrucao.executeUpdate()
                 }
@@ -432,18 +376,15 @@ class VagaIntegracaoSpec extends Specification {
                 conexao.prepareStatement(
                         'DELETE FROM vaga WHERE id_vaga = ?'
                 ).withCloseable { instrucao ->
-
                     instrucao.setInt(1, idVagaCriada)
                     instrucao.executeUpdate()
                 }
             }
 
             competenciasTeste.each { String nome ->
-
                 conexao.prepareStatement(
                         'DELETE FROM competencia WHERE nome = ?'
                 ).withCloseable { instrucao ->
-
                     instrucao.setString(1, nome)
                     instrucao.executeUpdate()
                 }
