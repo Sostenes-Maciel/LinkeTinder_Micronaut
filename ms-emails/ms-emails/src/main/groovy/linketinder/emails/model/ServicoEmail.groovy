@@ -53,20 +53,23 @@ class ServicoEmail {
 
             String corpo = montarMensagemPadrao(candidato.nome, eventoVaga)
 
-            if (modoSimulacao) {
-                log.info('[SIMULACAO E-MAIL] Para: {} | Assunto: {}\n{}', destinatario, assunto, corpo)
-            } else {
-                emailSender.send(
-                        Email.builder()
-                                .from(remetente)
-                                .to(destinatario)
-                                .subject(assunto)
-                                .body(corpo)
-                )
-                log.info('E-mail de nova vaga enviado para {} ({})', candidato.nome, destinatario)
+            try {
+                if (modoSimulacao) {
+                    log.info('[SIMULACAO E-MAIL] Para: {} | Assunto: {}\n{}', destinatario, assunto, corpo)
+                } else {
+                    emailSender.send(
+                            Email.builder()
+                                    .from(remetente)
+                                    .to(destinatario)
+                                    .subject(assunto)
+                                    .body(corpo)
+                    )
+                    log.info('E-mail de nova vaga enviado para {} ({})', candidato.nome, destinatario)
+                }
+                enviados++
+            } catch (Exception e) {
+                log.error('Falha ao enviar e-mail para {} ({}): {}', candidato.nome, destinatario, e.message)
             }
-
-            enviados++
         }
 
         return enviados

@@ -24,6 +24,9 @@ kafka:
     novas-vagas: ${KAFKA_TOPIC_NOVAS_VAGAS:linketinder.vagas.criadas}
 
 javamail:
+  authentication:
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASSWORD:}
   properties:
     mail.smtp.host: ${SMTP_HOST:localhost}
     mail.smtp.port: ${SMTP_PORT:1025}
