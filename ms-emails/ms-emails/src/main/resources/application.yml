@@ -1,0 +1,34 @@
+micronaut:
+  application:
+    name: ms-emails
+
+  server:
+    port: ${PORT:8088}
+
+  email:
+    from:
+      email: ${EMAIL_FROM:no-reply@linketinder.com}
+      name: ${EMAIL_FROM_NAME:Linketinder Vagas}
+
+datasources:
+  default:
+    url: jdbc:postgresql://localhost:5432/LinkeTinder_BD
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    driverClassName: org.postgresql.Driver
+
+kafka:
+  bootstrap:
+    servers: localhost:9092
+  topics:
+    novas-vagas: ${KAFKA_TOPIC_NOVAS_VAGAS:linketinder.vagas.criadas}
+
+javamail:
+  properties:
+    mail.smtp.host: ${SMTP_HOST:localhost}
+    mail.smtp.port: ${SMTP_PORT:1025}
+    mail.smtp.auth: ${SMTP_AUTH:false}
+    mail.smtp.starttls.enable: ${SMTP_STARTTLS:false}
+
+email:
+  modo-simulacao: ${EMAIL_MODO_SIMULACAO:false}
