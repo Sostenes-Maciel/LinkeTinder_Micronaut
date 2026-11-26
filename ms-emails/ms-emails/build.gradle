@@ -61,3 +61,15 @@ tasks.named("dockerfileNative") {
     jdkVersion = "21"
 }
 
+def envFile = file(".env")
+if (envFile.exists()) {
+    envFile.readLines().each { String line ->
+        String trimmed = line.trim()
+        if (trimmed && !trimmed.startsWith("#") && trimmed.contains("=")) {
+            String[] partes = trimmed.split("=", 2)
+            tasks.withType(JavaExec).configureEach {
+                environment(partes[0].trim(), partes[1].trim())
+            }
+        }
+    }
+}
