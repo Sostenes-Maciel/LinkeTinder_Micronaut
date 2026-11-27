@@ -1,0 +1,5 @@
+kafka:
+  enabled: false
+
+email:
+  modo-simulacao: false

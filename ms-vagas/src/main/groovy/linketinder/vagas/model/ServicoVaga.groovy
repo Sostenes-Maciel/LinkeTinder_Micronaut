@@ -1,9 +1,19 @@
+// Regras de negocio do microsservico de vagas com publicacao de eventos no Kafka.
 package linketinder.vagas.model
 
+import io.micronaut.core.annotation.Nullable
+import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import linketinder.vagas.mensageria.NotificacaoVagaProducer
+
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 @Singleton
 class ServicoVaga {
+
+    private static final DateTimeFormatter FORMATO_DATA_HORA =
+            DateTimeFormatter.ofPattern('dd/MM/yyyy HH:mm:ss')
 
     private static final Map<String, Integer> LIMITES_COLUNAS = [
             titulo     : 255,
@@ -14,13 +24,20 @@ class ServicoVaga {
     ]
 
     private final RepositorioVaga repositorio
+    private final NotificacaoVagaProducer notificacaoVagaProducer
 
     ServicoVaga(RepositorioVaga repositorio) {
-        this.repositorio = repositorio
+        this(repositorio, null)
     }
 
-    List<Map<String, Object>> listarVagas() {
-        repositorio.listarVagas()
+    @Inject
+    ServicoVaga(RepositorioVaga repositorio, @Nullable NotificacaoVagaProducer notificacaoVagaProducer) {
+        this.repositorio = repositorio
+        this.notificacaoVagaProducer = notificacaoVagaProducer
+    }
+
+    List<String> listarVagas() {
+        return repositorio.listarVagas() as List<String>;
     }
 
     Map<String, Object> buscarPorId(int idVaga) {
@@ -32,10 +49,9 @@ class ServicoVaga {
         return vaga
     }
 
-
-    List<Map<String, Object>> listarPorEmpresa(String cnpjEmpresa) {
+    List<String> listarPorEmpresa(String cnpjEmpresa) {
         String cnpj = validarTexto(cnpjEmpresa, 'cnpjEmpresa', 18)
-        repositorio.listarPorEmpresa(cnpj)
+        repositorio.listarPorEmpresa(cnpj) as List<String>
     }
 
     Map<String, Object> cadastrarVaga(Map<String, Object> dados) {
@@ -48,7 +64,7 @@ class ServicoVaga {
         String areaAtuacao = obterTextoObrigatorio(payload, 'areaAtuacao')
         List<String> competencias = obterCompetencias(payload)
 
-        return repositorio.inserirVaga([
+        Map<String, Object> vagaCriada = repositorio.inserirVaga([
                 cnpjEmpresa : cnpj,
                 titulo      : titulo,
                 pais        : pais,
@@ -57,6 +73,10 @@ class ServicoVaga {
                 areaAtuacao : areaAtuacao,
                 competencias: competencias
         ] as Map<String, Object>)
+
+        publicarEventoNovaVaga(vagaCriada, cnpj, titulo, pais, estado, descricao, areaAtuacao, competencias)
+
+        return vagaCriada
     }
 
     Map<String, Object> atualizarVaga(int idVaga, Map<String, Object> dados) {
@@ -95,6 +115,38 @@ class ServicoVaga {
         }
     }
 
+    private void publicarEventoNovaVaga(
+            Map<String, Object> vagaCriada,
+            String cnpj,
+            String titulo,
+            String pais,
+            String estado,
+            String descricao,
+            String areaAtuacao,
+            List<String> competencias
+    ) {
+        if (notificacaoVagaProducer == null) {
+            return
+        }
+
+        Object idVaga = vagaCriada?.idVaga ?: vagaCriada?.id
+        Map<String, Object> evento = [
+                idVaga         : idVaga,
+                nome           : titulo,
+                titulo         : titulo,
+                descricao      : descricao,
+                competencias   : competencias,
+                local          : "${estado} - ${pais}".toString(),
+                pais           : pais,
+                estado         : estado,
+                areaAtuacao    : areaAtuacao,
+                cnpjEmpresa    : cnpj,
+                dataHoraCriacao: LocalDateTime.now().format(FORMATO_DATA_HORA)
+        ] as Map<String, Object>
+
+        notificacaoVagaProducer.enviarNovaVaga(evento)
+    }
+
     private static void validarIdVaga(int idVaga) {
         if (idVaga <= 0) {
             throw new VagaInvalidoException('idVaga deve ser maior que zero.')
@@ -121,7 +173,6 @@ class ServicoVaga {
         List<String> competencias = []
 
         colecao.each { Object item ->
-
             if (!(item instanceof String)) {
                 throw new VagaInvalidoException(
                         'cada competencia deve ser um texto nao vazio.'

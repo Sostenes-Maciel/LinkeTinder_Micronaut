@@ -1,0 +1,75 @@
+plugins {
+    id("groovy")
+    id("io.micronaut.application") version "4.6.2"
+    id("com.gradleup.shadow") version "8.3.9"
+    id("io.micronaut.aot") version "4.6.2"
+}
+
+version = "0.1"
+group = "linketinder"
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation("io.micronaut.groovy:micronaut-runtime-groovy")
+    implementation("io.micronaut.serde:micronaut-serde-jackson")
+    implementation("io.micronaut.sql:micronaut-jdbc-hikari")
+    implementation("io.micronaut.kafka:micronaut-kafka")
+    implementation("io.micronaut.email:micronaut-email-javamail")
+    compileOnly("io.micronaut.serde:micronaut-serde-processor")
+    runtimeOnly("ch.qos.logback:logback-classic")
+    runtimeOnly("org.postgresql:postgresql")
+    runtimeOnly("org.eclipse.angus:angus-mail")
+    runtimeOnly("org.yaml:snakeyaml")
+    testImplementation("org.apache.groovy:groovy-json:4.0.22")
+    testImplementation("net.bytebuddy:byte-buddy:1.18.17")
+}
+
+application {
+    mainClass = "linketinder.emails.Application"
+}
+
+java {
+    sourceCompatibility = JavaVersion.toVersion("21")
+    targetCompatibility = JavaVersion.toVersion("21")
+}
+
+graalvmNative.toolchainDetection = false
+
+micronaut {
+    runtime("netty")
+    testRuntime("spock2")
+    processing {
+        incremental(true)
+        annotations("linketinder.*")
+    }
+    aot {
+        optimizeServiceLoading = false
+        convertYamlToJava = false
+        precomputeOperations = true
+        cacheEnvironment = true
+        optimizeClassLoading = true
+        deduceEnvironment = true
+        optimizeNetty = true
+        replaceLogbackXml = true
+    }
+}
+
+tasks.named("dockerfileNative") {
+    jdkVersion = "21"
+}
+
+def envFile = file(".env")
+if (envFile.exists()) {
+    envFile.readLines().each { String line ->
+        String trimmed = line.trim()
+        if (trimmed && !trimmed.startsWith("#") && trimmed.contains("=")) {
+            String[] partes = trimmed.split("=", 2)
+            tasks.withType(JavaExec).configureEach {
+                environment(partes[0].trim(), partes[1].trim())
+            }
+        }
+    }
+}

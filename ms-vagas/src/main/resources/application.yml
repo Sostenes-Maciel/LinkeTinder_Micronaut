@@ -13,3 +13,9 @@ datasources:
     username: ${DB_USER:postgres}
     password: ${DB_PASSWORD:postgres}
     driverClassName: org.postgresql.Driver
+
+kafka:
+  bootstrap:
+    servers: localhost:9092
+  topics:
+    novas-vagas: ${KAFKA_TOPIC_NOVAS_VAGAS:linketinder.vagas.criadas}

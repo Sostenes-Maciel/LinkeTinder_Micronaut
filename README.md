@@ -520,6 +520,104 @@ Para executar os testes de um microsserviço, acesse sua pasta e utilize:
 
 **Importante:** os quatro microsserviços precisam estar em execução para que todas as funcionalidades do frontend que dependem deles funcionem corretamente.
 
+# Atualização - Microsserviço de envio automático de e-mails com Kafka
+
+O backend foi estruturado em uma arquitetura de microsserviços desacoplados, combinando comunicação síncrona via APIs REST e comunicação assíncrona orientada a eventos para notificações automáticas por e-mail.
+
+---
+
+## Tecnologias Utilizadas
+
+- **Linguagens:** Groovy e Java 21
+- **Framework:** Micronaut
+- **Mensageria:** Apache Kafka (modo KRaft)
+- **Banco de Dados:** PostgreSQL
+- **Envio de E-mails:** Micronaut Email (JavaMail / SMTP via Resend)
+- **Build e Automação:** Gradle (multi-módulo)
+- **Testes:** Spock Framework
+
+---
+
+## Arquitetura e Padrões Utilizados
+
+- **Microsserviços:** Separação de domínios em serviços independentes (`ms-cadastro`, `ms-vagas` e `ms-emails`), permitindo evolução e execução isoladas.
+- **Event-Driven Architecture (EDA):** Desacoplamento entre o cadastro de vagas e o disparo de notificações por meio de eventos publicados no Apache Kafka (tópico `linketinder.vagas.criadas`).
+- **Arquitetura em Camadas e MVC:** Organização interna separando responsabilidades entre Controllers (exposição de endpoints REST/JSON), Models/Services (regras de negócio e integração) e Repositories/DAOs (persistência no PostgreSQL).
+- **Injeção de Dependências (DI):** Gerenciamento de ciclo de vida de beans em tempo de compilação provido pelo Micronaut.
+- **Externalized Configuration:** Isolamento de credenciais e parâmetros de ambiente (SMTP, portas e flags de simulação) em arquivos `.env` ignorados pelo controle de versão.
+- **Isolamento de Falhas (Resiliência):** Tratamento individual de exceções durante o loop de disparo de e-mails, garantindo que uma falha em um destinatário específico não interrompa o envio para os demais candidatos.
+
+---
+
+## Módulos do Projeto
+
+| Módulo | Porta Padrão | Responsabilidade |
+| :--- | :--- | :--- |
+| `ms-vagas` | `8087` | CRUD de vagas e publicação de eventos de criação no tópico Kafka `linketinder.vagas.criadas`. |
+| `ms-emails` | `8088` | Consumo assíncrono dos eventos de novas vagas, consulta de candidatos no banco e envio de notificações via SMTP. |
+
+---
+
+## Fluxo de Notificação Orientado a Eventos
+
+1. O frontend envia uma requisição HTTP `POST` (JSON) para o `ms-vagas` (`/api/vagas`).
+2. O `ms-vagas` persiste a vaga no banco PostgreSQL (`LinkeTinder_BD`), publica uma mensagem com os dados da vaga (título, descrição, competências, local e data/hora de criação) no tópico `linketinder.vagas.criadas` do Kafka e encerra a requisição.
+3. O `ms-emails` consome automaticamente a nova mensagem do tópico, consulta os e-mails cadastrados na tabela `candidato` do PostgreSQL e dispara uma notificação padronizada para cada participante via SMTP.
+
+---
+
+## Pré-requisitos
+
+- Java JDK 21 ou superior
+- PostgreSQL instalado e em execução (banco `LinkeTinder_BD` configurado)
+- Apache Kafka 3.8.1+ (configurado em modo KRaft)
+- Conta e API Key no Resend (ou servidor SMTP equivalente) para envios reais
+
+---
+
+## Como Executar o Projeto
+
+### 1. Configurar variáveis de ambiente (`ms-emails`)
+
+Na pasta `ms-emails`, crie um arquivo `.env` a partir do modelo `.env.example`:
+
+```env
+SMTP_HOST=smtp.resend.com
+SMTP_PORT=587
+SMTP_AUTH=true
+SMTP_STARTTLS=true
+SMTP_USER=resend
+SMTP_PASSWORD=re_sua_api_key
+EMAIL_FROM=onboarding@resend.dev
+EMAIL_MODO_SIMULACAO=false
+```
+
+> Para testar apenas no console sem realizar disparos externos, defina `EMAIL_MODO_SIMULACAO=true`.
+
+### 2. Iniciar o Apache Kafka
+
+Inicie o broker Kafka em modo KRaft diretamente pela configuração de execução (**Run**) da IDE (IntelliJ IDEA):
+
+1. Caso ainda não esteja cadastrado, acesse **Edit Configurations...** > **`+`** > **Shell Script**.
+2. Defina o nome como `Kafka`, marque **Script text** e insira o comando de inicialização do broker:
+   ```bash
+   <caminho-do-kafka>/bin/kafka-server-start.sh <caminho-do-kafka>/config/kraft/server.properties
+   ```
+3. Selecione a configuração `Kafka` no seletor superior da IDE e clique em **Run** (`Shift + F10`).
+
+### 3. Iniciar os Microsserviços
+
+A partir da raiz do projeto, inicie cada microsserviço em uma aba separada do terminal:
+
+```bash
+# Microsserviço de Vagas (Produtor Kafka)
+./gradlew :ms-vagas:run
+
+# Microsserviço de E-mails (Consumidor Kafka)
+./gradlew :ms-emails:run
+```
+
+
 👤 Autor
 
 Sóstenes Marques Maciel

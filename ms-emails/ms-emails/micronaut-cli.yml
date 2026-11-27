@@ -1,0 +1,6 @@
+applicationType: default
+defaultPackage: com.zg.acelera
+testFramework: spock
+sourceLanguage: groovy
+buildTool: gradle
+features: [ app-name, email-javamail, gitignore, gradle, groovy, groovy-application, http-client-test, jackson-xml, jdbc-hikari, kafka, logback, micronaut-aot, micronaut-build, micronaut-configuration-validation-gradle-plugin, micronaut-http-validation, netty-server, postgres, properties, readme, serialization-jackson, shade, spock, static-resources, test-resources ]
