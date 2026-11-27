@@ -24,4 +24,215 @@ tags:
   - name: Curtidas e Matches
     description: Endpoints do ms-curtidas-matches (porta 8088)
 
-paths: {}
+paths:
+  /api/candidatos:
+    post:
+      tags: [Cadastro]
+      summary: Cadastra candidato
+      description: Cria um novo registro de candidato com validacao de campos obrigatorios, faixa etaria (18 a 120 anos) e lista opcional de competencias.
+      servers:
+        - url: http://localhost:8085
+          description: ms-cadastro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CandidatoInput'
+      responses:
+        '201':
+          description: Candidato cadastrado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CadastroCriadoResponse'
+              example:
+                tipo: candidato
+                identificador: "123.456.789-00"
+        '422':
+          description: Dados de entrada invalidos ou fora das regras de negocio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: idade deve estar entre 18 e 120 anos.
+        '409':
+          description: Conflito de duplicidade (CPF ou e-mail ja cadastrado)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: Ja existe um cadastro com esse identificador ou email.
+        '500':
+          description: Erro interno ao persistir o cadastro
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: Falha ao persistir o cadastro.
+
+  /api/empresas:
+    post:
+      tags: [Cadastro]
+      summary: Cadastra empresa
+      description: Cria um novo registro de empresa recrutadora com validacao de campos obrigatorios e lista opcional de competencias.
+      servers:
+        - url: http://localhost:8085
+          description: ms-cadastro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmpresaInput'
+      responses:
+        '201':
+          description: Empresa cadastrada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CadastroCriadoResponse'
+              example:
+                tipo: empresa
+                identificador: "12.345.678/0001-99"
+        '422':
+          description: Dados de entrada invalidos ou fora das regras de negocio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: email invalido.
+        '409':
+          description: Conflito de duplicidade (CNPJ ou e-mail ja cadastrado)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: Ja existe um cadastro com esse identificador ou email.
+        '500':
+          description: Erro interno ao persistir o cadastro
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: Falha ao persistir o cadastro.
+
+components:
+  schemas:
+    CandidatoInput:
+      type: object
+      required:
+        - cpf
+        - nome
+        - email
+        - pais
+        - estado
+        - cep
+        - descricao
+        - idade
+      properties:
+        cpf:
+          type: string
+          maxLength: 14
+          example: "123.456.789-00"
+        nome:
+          type: string
+          maxLength: 255
+          example: "Joao Silva"
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: "joao.silva@email.com"
+        pais:
+          type: string
+          maxLength: 100
+          example: "Brasil"
+        estado:
+          type: string
+          maxLength: 100
+          example: "Pernambuco"
+        cep:
+          type: string
+          maxLength: 20
+          example: "55290-000"
+        descricao:
+          type: string
+          example: "Desenvolvedor backend com foco em Groovy, Micronaut e PostgreSQL."
+        idade:
+          type: integer
+          minimum: 18
+          maximum: 120
+          example: 26
+        competencias:
+          type: array
+          items:
+            type: string
+          example: ["Groovy", "Micronaut", "PostgreSQL"]
+
+    EmpresaInput:
+      type: object
+      required:
+        - cnpj
+        - nome
+        - email
+        - pais
+        - estado
+        - cep
+        - descricao
+      properties:
+        cnpj:
+          type: string
+          maxLength: 18
+          example: "12.345.678/0001-99"
+        nome:
+          type: string
+          maxLength: 255
+          example: "Pastelsoft"
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: "pastelzinho@pastelsoft.com.br"
+        pais:
+          type: string
+          maxLength: 100
+          example: "Brasil"
+        estado:
+          type: string
+          maxLength: 100
+          example: "Pernambuco"
+        cep:
+          type: string
+          maxLength: 20
+          example: "55290-000"
+        descricao:
+          type: string
+          example: "Empresa de desenvolvimento de software e solucoes em nuvem."
+        competencias:
+          type: array
+          items:
+            type: string
+          example: ["Groovy", "Docker", "Kafka"]
+
+    CadastroCriadoResponse:
+      type: object
+      properties:
+        tipo:
+          type: string
+          enum: [candidato, empresa]
+        identificador:
+          type: string
+          description: CPF do candidato ou CNPJ da empresa cadastrada
+
+    ErroResponse:
+      type: object
+      properties:
+        mensagem:
+          type: string
