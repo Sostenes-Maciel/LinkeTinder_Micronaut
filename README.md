@@ -620,7 +620,7 @@ A partir da raiz do projeto, inicie cada microsserviço em uma aba separada do t
 
 A especificação unificada dos contratos RESTful públicos do Linketinder está disponível em:
 
-- `swagger/linketinder-openapi.yaml`
+- `docs/swagger/linketinder-openapi.yaml`
 
 ### Servidores e Portas Padrão
 
