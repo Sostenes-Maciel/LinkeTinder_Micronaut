@@ -616,7 +616,27 @@ A partir da raiz do projeto, inicie cada microsserviço em uma aba separada do t
 # Microsserviço de E-mails (Consumidor Kafka)
 ./gradlew :ms-emails:run
 ```
+## Atualização - Documentação das APIs (OpenAPI / Swagger)
 
+A especificação unificada dos contratos RESTful públicos do Linketinder está disponível em:
+
+- `swagger/linketinder-openapi.yaml`
+
+### Servidores e Portas Padrão
+
+| Microsserviço | Porta Padrão | Base Path | Responsabilidade |
+| :--- | :--- | :--- | :--- |
+| `ms-cadastro` | `8085` | `/api` | Cadastro de candidatos e empresas |
+| `ms-competencias` | `8086` | `/api/competencias` | CRUD de competências e vínculos com candidatos, empresas e vagas |
+| `ms-vagas` | `8087` | `/api/vagas` | CRUD de vagas e publicação de eventos de nova vaga |
+| `ms-curtidas-matches` | `8088` | `/api` | Registro e consulta de curtidas e matches |
+
+> O microsserviço `ms-emails` opera exclusivamente de forma assíncrona via mensageria (consumo de eventos de novas vagas) e não expõe endpoints HTTP públicos.
+
+### Como Visualizar e Testar
+
+1. **Swagger Editor / Swagger UI:** Importe ou cole o conteúdo de `swagger/linketinder-openapi.yaml` em [editor.swagger.io](https://editor.swagger.io) para explorar os schemas e executar requisições diretamente contra os serviços locais.
+2. **IntelliJ IDEA:** Abra a aba **Endpoints** (`View > Tool Windows > Endpoints`) para visualizar as rotas mapeadas e disparar chamadas pelo **HTTP Client** integrado.
 
 👤 Autor
 
