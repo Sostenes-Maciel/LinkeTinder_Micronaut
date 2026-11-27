@@ -1,106 +1,1318 @@
-VagaCreateInput:
-  type: object
-  required:
-    - cnpjEmpresa
-    - titulo
-    - pais
-    - estado
-    - descricao
-    - areaAtuacao
-    - competencias
-  properties:
-    cnpjEmpresa:
-      type: string
-      maxLength: 18
-      example: "12.345.678/0001-99"
-    titulo:
-      type: string
-      maxLength: 255
-      example: "Desenvolvedor Backend Groovy/Micronaut"
-    pais:
-      type: string
-      maxLength: 100
-      example: "Brasil"
-    estado:
-      type: string
-      maxLength: 100
-      example: "Pernambuco"
-    descricao:
-      type: string
-      example: "Desenvolvimento de microsservicos RESTful e mensageria com Kafka."
-    areaAtuacao:
-      type: string
-      maxLength: 150
-      example: "Tecnologia da Informacao"
-    competencias:
-      type: array
-      minItems: 1
-      items:
-        type: string
-      example: ["Groovy", "Micronaut", "PostgreSQL"]
+openapi: 3.0.3
+info:
+  title: Linketinder API
+  description: Contrato unificado das APIs RESTful publicas dos microsservicos do Linketinder.
+  version: 1.0.0
 
-  VagaUpdateInput:
-    type: object
-    required:
-      - titulo
-      - pais
-      - estado
-      - descricao
-      - areaAtuacao
-    properties:
-      titulo:
-        type: string
-        maxLength: 255
-        example: "Desenvolvedor Backend Pleno"
-      pais:
-        type: string
-        maxLength: 100
-        example: "Brasil"
-      estado:
-        type: string
-        maxLength: 100
-        example: "Pernambuco"
-      descricao:
-        type: string
-        example: "Atuacao em arquitetura orientada a eventos."
-      areaAtuacao:
-        type: string
-        maxLength: 150
-        example: "Engenharia de Software"
-      competencias:
-        type: array
-        minItems: 1
-        description: Opcional na atualizacao; se informado, substitui as competencias da vaga
-        items:
-          type: string
-        example: ["Groovy", "Kafka", "Docker"]
+servers:
+  - url: http://localhost:8085
+    description: ms-cadastro - Cadastro de Candidatos e Empresas
+  - url: http://localhost:8086
+    description: ms-competencias - CRUD e Vinculos de Competencias
+  - url: http://localhost:8087
+    description: ms-vagas - CRUD de Vagas
+  - url: http://localhost:8088
+    description: ms-curtidas-matches - Curtidas e Matches
 
-  VagaResponse:
-    type: object
-    properties:
-      idVaga:
-        type: integer
-        example: 1
-      cnpjEmpresa:
-        type: string
-        example: "12.345.678/0001-99"
-      titulo:
-        type: string
-        example: "Desenvolvedor Backend Groovy/Micronaut"
-      pais:
-        type: string
-        example: "Brasil"
-      estado:
-        type: string
-        example: "Pernambuco"
-      descricao:
-        type: string
-        example: "Desenvolvimento de microsservicos RESTful e mensageria com Kafka."
-      areaAtuacao:
-        type: string
-        example: "Tecnologia da Informacao"
-      competencias:
-        type: array
-        items:
+tags:
+  - name: Cadastro
+    description: Endpoints do ms-cadastro (porta 8085)
+  - name: Competencias
+    description: Endpoints do ms-competencias (porta 8086)
+  - name: Vagas
+    description: Endpoints do ms-vagas (porta 8087)
+  - name: Curtidas e Matches
+    description: Endpoints do ms-curtidas-matches (porta 8088)
+
+paths:
+  /api/candidatos:
+    post:
+      tags: [Cadastro]
+      summary: Cadastra candidato
+      description: Cria um novo registro de candidato com validacao de campos obrigatorios, faixa etaria (18 a 120 anos) e lista opcional de competencias.
+      servers:
+        - url: http://localhost:8085
+          description: ms-cadastro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CandidatoInput'
+      responses:
+        '201':
+          description: Candidato cadastrado com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CadastroCriadoResponse'
+              example:
+                tipo: candidato
+                identificador: "123.456.789-00"
+        '422':
+          description: Dados de entrada invalidos ou fora das regras de negocio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "idade deve estar entre 18 e 120 anos."
+        '409':
+          description: Conflito de duplicidade (CPF ou e-mail ja cadastrado)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "Ja existe um cadastro com esse identificador ou email."
+        '500':
+          description: Erro interno ao persistir o cadastro
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "Falha ao persistir o cadastro."
+
+  /api/empresas:
+    post:
+      tags: [Cadastro]
+      summary: Cadastra empresa
+      description: Cria um novo registro de empresa recrutadora com validacao de campos obrigatorios e lista opcional de competencias.
+      servers:
+        - url: http://localhost:8085
+          description: ms-cadastro
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmpresaInput'
+      responses:
+        '201':
+          description: Empresa cadastrada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CadastroCriadoResponse'
+              example:
+                tipo: empresa
+                identificador: "12.345.678/0001-99"
+        '422':
+          description: Dados de entrada invalidos ou fora das regras de negocio
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "email invalido."
+        '409':
+          description: Conflito de duplicidade (CNPJ ou e-mail ja cadastrado)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "Ja existe um cadastro com esse identificador ou email."
+        '500':
+          description: Erro interno ao persistir o cadastro
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "Falha ao persistir o cadastro."
+
+  /api/competencias:
+    get:
+      tags: [Competencias]
+      summary: Lista competencias
+      description: Retorna todas as competencias cadastradas no sistema.
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      responses:
+        '200':
+          description: Lista de competencias retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompetenciaItem'
+        '500':
+          description: Erro interno ao consultar competencias
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+    post:
+      tags: [Competencias]
+      summary: Cadastra nova competencia
+      description: Cria uma nova competencia tecnica ou comportamental (limite de 255 caracteres).
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompetenciaInput'
+      responses:
+        '201':
+          description: Competencia criada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompetenciaItem'
+        '422':
+          description: Nome da competencia ausente ou acima de 255 caracteres
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "nome e obrigatorio e deve ser texto."
+        '409':
+          description: Competencia ja cadastrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "Registro duplicado de competencia ou vinculo."
+        '500':
+          description: Erro interno ao persistir competencia
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/competencias/candidatos/consulta-lote:
+    post:
+      tags: [Competencias]
+      summary: Consulta competencias por lote de candidatos
+      description: Recebe uma lista de ate 500 CPFs (11 digitos cada) e retorna um mapa agrupando as competencias de cada candidato.
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsultaLoteCandidatosInput'
+      responses:
+        '200':
+          description: Mapa de competencias indexado por CPF
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CompetenciaItem'
+              example:
+                "12345678901":
+                  - id: 1
+                    nome: Groovy
+                  - id: 2
+                    nome: Micronaut
+        '422':
+          description: Lista de CPFs invalida, mal formatada ou acima de 500 itens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "cpfs[0] deve conter exatamente 11 digitos."
+        '500':
+          description: Erro interno na consulta em lote
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/competencias/candidatos/{cpf}:
+    get:
+      tags: [Competencias]
+      summary: Lista competencias de um candidato
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      parameters:
+        - name: cpf
+          in: path
+          required: true
+          description: CPF do candidato (ate 14 caracteres)
+          schema:
+            type: string
+            maxLength: 14
+            example: "12345678901"
+      responses:
+        '200':
+          description: Lista de competencias vinculadas ao candidato
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompetenciaItem'
+        '422':
+          description: CPF invalido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+        '500':
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/competencias/candidatos:
+    post:
+      tags: [Competencias]
+      summary: Vincula competencia a candidato
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VinculoCompetenciaCandidatoInput'
+      responses:
+        '201':
+          description: Competencia vinculada ao candidato com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VinculoCompetenciaCandidatoResponse'
+        '422':
+          description: Dados invalidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+        '409':
+          description: Vinculo ja existente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "Registro duplicado de competencia ou vinculo."
+        '500':
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/competencias/empresas/{cnpj}:
+    get:
+      tags: [Competencias]
+      summary: Lista competencias de uma empresa
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      parameters:
+        - name: cnpj
+          in: path
+          required: true
+          description: CNPJ da empresa (ate 18 caracteres)
+          schema:
+            type: string
+            maxLength: 18
+            example: "12345678000199"
+      responses:
+        '200':
+          description: Lista de competencias vinculadas a empresa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompetenciaItem'
+        '422':
+          description: CNPJ invalido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+        '500':
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/competencias/empresas:
+    post:
+      tags: [Competencias]
+      summary: Vincula competencia a empresa
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VinculoCompetenciaEmpresaInput'
+      responses:
+        '201':
+          description: Competencia vinculada a empresa com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VinculoCompetenciaEmpresaResponse'
+        '422':
+          description: Dados invalidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+        '409':
+          description: Vinculo ja existente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "Registro duplicado de competencia ou vinculo."
+        '500':
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/competencias/vagas/{idVaga}:
+    get:
+      tags: [Competencias]
+      summary: Lista competencias de uma vaga
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      parameters:
+        - name: idVaga
+          in: path
+          required: true
+          description: Identificador inteiro positivo da vaga
+          schema:
+            type: integer
+            minimum: 1
+            example: 10
+      responses:
+        '200':
+          description: Lista de competencias vinculadas a vaga
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompetenciaItem'
+        '422':
+          description: idVaga menor ou igual a zero
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "idVaga deve ser maior que zero."
+        '500':
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/competencias/vagas:
+    post:
+      tags: [Competencias]
+      summary: Vincula competencia a vaga
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VinculoCompetenciaVagaInput'
+      responses:
+        '201':
+          description: Competencia vinculada a vaga com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VinculoCompetenciaVagaResponse'
+        '422':
+          description: Dados invalidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+        '409':
+          description: Vinculo ja existente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "Registro duplicado de competencia ou vinculo."
+        '500':
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/vagas:
+    get:
+      tags: [Vagas]
+      summary: Lista todas as vagas
+      description: Retorna todas as vagas cadastradas no sistema.
+      servers:
+        - url: http://localhost:8087
+          description: ms-vagas
+      responses:
+        '200':
+          description: Lista de vagas retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VagaResponse'
+        '500':
+          description: Erro interno ao consultar vagas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+    post:
+      tags: [Vagas]
+      summary: Cadastra vaga
+      description: Cria uma nova vaga vinculada a uma empresa (cnpjEmpresa) com pelo menos uma competencia obrigatoria e dispara evento de notificacao no Kafka.
+      servers:
+        - url: http://localhost:8087
+          description: ms-vagas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VagaCreateInput'
+      responses:
+        '201':
+          description: Vaga cadastrada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VagaResponse'
+        '422':
+          description: Dados invalidos, lista de competencias vazia ou cnpjEmpresa nao encontrado no banco
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "A vaga deve possuir pelo menos uma competencia."
+        '409':
+          description: Conflito de duplicidade de vaga
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "Ja existe uma vaga com esses dados."
+        '500':
+          description: Erro interno ao persistir vaga
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/vagas/{idVaga}:
+    get:
+      tags: [Vagas]
+      summary: Busca vaga por ID
+      servers:
+        - url: http://localhost:8087
+          description: ms-vagas
+      parameters:
+        - name: idVaga
+          in: path
+          required: true
+          description: Identificador inteiro positivo da vaga
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+      responses:
+        '200':
+          description: Dados da vaga encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VagaResponse'
+        '422':
+          description: ID invalido ou vaga nao encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "Vaga com id 99 nao encontrada."
+        '500':
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+    put:
+      tags: [Vagas]
+      summary: Atualiza vaga
+      description: Atualiza os dados de uma vaga existente. O campo competencias e opcional na atualizacao, mas se enviado deve conter ao menos um item valido.
+      servers:
+        - url: http://localhost:8087
+          description: ms-vagas
+      parameters:
+        - name: idVaga
+          in: path
+          required: true
+          description: Identificador inteiro positivo da vaga
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VagaUpdateInput'
+      responses:
+        '200':
+          description: Vaga atualizada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VagaResponse'
+        '422':
+          description: Dados invalidos ou vaga nao encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+        '409':
+          description: Conflito de duplicidade
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+        '500':
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+    delete:
+      tags: [Vagas]
+      summary: Exclui vaga
+      servers:
+        - url: http://localhost:8087
+          description: ms-vagas
+      parameters:
+        - name: idVaga
+          in: path
+          required: true
+          description: Identificador inteiro positivo da vaga
+          schema:
+            type: integer
+            minimum: 1
+            example: 1
+      responses:
+        '204':
+          description: Vaga excluida com sucesso (sem conteudo no corpo)
+        '422':
+          description: ID invalido ou vaga nao encontrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "Vaga com id 99 nao encontrada."
+        '500':
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/vagas/empresas/{cnpj}:
+    get:
+      tags: [Vagas]
+      summary: Lista vagas por empresa
+      servers:
+        - url: http://localhost:8087
+          description: ms-vagas
+      parameters:
+        - name: cnpj
+          in: path
+          required: true
+          description: CNPJ da empresa (ate 18 caracteres)
+          schema:
+            type: string
+            maxLength: 18
+            example: "12345678000199"
+      responses:
+        '200':
+          description: Lista de vagas publicadas pela empresa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/VagaResponse'
+        '422':
+          description: CNPJ invalido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+        '500':
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/curtidas:
+    get:
+      tags: [Curtidas e Matches]
+      summary: Lista curtidas
+      description: Retorna todas as curtidas registradas no sistema.
+      servers:
+        - url: http://localhost:8088
+          description: ms-curtidas-matches
+      responses:
+        '200':
+          description: Lista de curtidas retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  additionalProperties: true
+        '500':
+          description: Erro interno ao consultar curtidas
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+    post:
+      tags: [Curtidas e Matches]
+      summary: Registra curtida
+      description: Registra uma curtida de CANDIDATO ou EMPRESA em uma vaga e verifica automaticamente se houve match.
+      servers:
+        - url: http://localhost:8088
+          description: ms-curtidas-matches
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CurtidaInput'
+      responses:
+        '201':
+          description: Curtida registrada com sucesso (indica se gerou match)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurtidaCriadaResponse'
+        '422':
+          description: Autor invalido, campos obrigatorios ausentes ou chave estrangeira inexistente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "Informe um autor valido: CANDIDATO ou EMPRESA."
+        '409':
+          description: Curtida ou match duplicado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "Registro duplicado em curtida ou match_vaga."
+        '500':
+          description: Erro interno ao persistir curtida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/matches:
+    get:
+      tags: [Curtidas e Matches]
+      summary: Lista matches ou status de curtidas
+      description: Filtra matches e curtidas pendentes por cpf (candidato) ou cnpj (empresa). Quando completo=true, retorna um objeto contendo matches e curtidasPendentes.
+      servers:
+        - url: http://localhost:8088
+          description: ms-curtidas-matches
+      parameters:
+        - name: cpf
+          in: query
+          required: false
+          description: CPF do candidato (11 digitos quando completo=true)
+          schema:
+            type: string
+            maxLength: 14
+            example: "12345678901"
+        - name: cnpj
+          in: query
+          required: false
+          description: CNPJ da empresa (14 digitos quando completo=true)
+          schema:
+            type: string
+            maxLength: 18
+            example: "12345678000199"
+        - name: completo
+          in: query
+          required: false
+          description: Quando true, retorna o agrupamento completo de matches e curtidasPendentes
+          schema:
+            type: boolean
+            example: true
+      responses:
+        '200':
+          description: Lista de status/matches ou objeto consolidado (quando completo=true)
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: array
+                    items:
+                      type: object
+                      additionalProperties: true
+                  - $ref: '#/components/schemas/MatchesCompletosResponse'
+        '422':
+          description: CPF ou CNPJ invalido para consulta
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "CPF invalido para consultar os matches."
+        '500':
+          description: Erro interno ao consultar matches
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+    post:
+      tags: [Curtidas e Matches]
+      summary: Registra curtida via rota de matches
+      description: Endpoint alternativo ao POST /api/curtidas para registrar curtidas de CANDIDATO ou EMPRESA e verificar match.
+      servers:
+        - url: http://localhost:8088
+          description: ms-curtidas-matches
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CurtidaInput'
+      responses:
+        '201':
+          description: Curtida registrada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurtidaCriadaResponse'
+        '422':
+          description: Dados invalidos ou chave estrangeira inexistente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+        '409':
+          description: Registro duplicado em curtida ou match_vaga
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+        '500':
+          description: Erro interno ao persistir curtida ou match
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+    delete:
+      tags: [Curtidas e Matches]
+      summary: Remove curtida
+      description: Desfaz uma curtida registrada por CANDIDATO ou EMPRESA (para autor=EMPRESA, o campo cnpjEmpresa e obrigatorio).
+      servers:
+        - url: http://localhost:8088
+          description: ms-curtidas-matches
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RemoverCurtidaInput'
+      responses:
+        '200':
+          description: Curtida removida com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MensagemResponse'
+              example:
+                mensagem: "Curtida removida com sucesso."
+        '400':
+          description: Curtida nao encontrada ou impedida por match ja consolidado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "Nao foi possivel remover a curtida. Verifique se existe um match ou se a curtida esta registrada."
+        '422':
+          description: Campos obrigatorios ausentes ou autor invalido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: "CPF e ID da vaga sao obrigatorios."
+        '500':
+          description: Erro interno ao remover curtida
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+components:
+  schemas:
+    CandidatoInput:
+      type: object
+      required:
+        - cpf
+        - nome
+        - email
+        - pais
+        - estado
+        - cep
+        - descricao
+        - idade
+      properties:
+        cpf:
           type: string
-        example: ["Groovy", "Micronaut", "PostgreSQL"]
+          maxLength: 14
+          example: "123.456.789-00"
+        nome:
+          type: string
+          maxLength: 255
+          example: "Joao Silva"
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: "joao.silva@email.com"
+        pais:
+          type: string
+          maxLength: 100
+          example: "Brasil"
+        estado:
+          type: string
+          maxLength: 100
+          example: "Pernambuco"
+        cep:
+          type: string
+          maxLength: 20
+          example: "55290-000"
+        descricao:
+          type: string
+          example: "Desenvolvedor backend com foco em Groovy, Micronaut e PostgreSQL."
+        idade:
+          type: integer
+          minimum: 18
+          maximum: 120
+          example: 26
+        competencias:
+          type: array
+          items:
+            type: string
+          example: ["Groovy", "Micronaut", "PostgreSQL"]
+
+    EmpresaInput:
+      type: object
+      required:
+        - cnpj
+        - nome
+        - email
+        - pais
+        - estado
+        - cep
+        - descricao
+      properties:
+        cnpj:
+          type: string
+          maxLength: 18
+          example: "12.345.678/0001-99"
+        nome:
+          type: string
+          maxLength: 255
+          example: "Pastelsoft"
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          example: "pastelzinho@pastelsoft.com.br"
+        pais:
+          type: string
+          maxLength: 100
+          example: "Brasil"
+        estado:
+          type: string
+          maxLength: 100
+          example: "Pernambuco"
+        cep:
+          type: string
+          maxLength: 20
+          example: "55290-000"
+        descricao:
+          type: string
+          example: "Empresa de desenvolvimento de software e solucoes em nuvem."
+        competencias:
+          type: array
+          items:
+            type: string
+          example: ["Groovy", "Docker", "Kafka"]
+
+    CadastroCriadoResponse:
+      type: object
+      properties:
+        tipo:
+          type: string
+          enum: [candidato, empresa]
+        identificador:
+          type: string
+          description: CPF do candidato ou CNPJ da empresa cadastrada
+
+    CompetenciaInput:
+      type: object
+      required:
+        - nome
+      properties:
+        nome:
+          type: string
+          maxLength: 255
+          example: "Groovy"
+
+    CompetenciaItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nome:
+          type: string
+          example: "Groovy"
+
+    ConsultaLoteCandidatosInput:
+      type: object
+      required:
+        - cpfs
+      properties:
+        cpfs:
+          type: array
+          maxItems: 500
+          description: Lista de CPFs (11 digitos numericos cada)
+          items:
+            type: string
+            example: "12345678901"
+          example: ["12345678901", "98765432100"]
+
+    VinculoCompetenciaCandidatoInput:
+      type: object
+      required:
+        - cpfCandidato
+        - nome
+      properties:
+        cpfCandidato:
+          type: string
+          maxLength: 14
+          example: "12345678901"
+        nome:
+          type: string
+          maxLength: 255
+          example: "Groovy"
+
+    VinculoCompetenciaCandidatoResponse:
+      type: object
+      properties:
+        cpfCandidato:
+          type: string
+          example: "12345678901"
+        competencia:
+          type: string
+          example: "Groovy"
+
+    VinculoCompetenciaEmpresaInput:
+      type: object
+      required:
+        - cnpjEmpresa
+        - nome
+      properties:
+        cnpjEmpresa:
+          type: string
+          maxLength: 18
+          example: "12345678000199"
+        nome:
+          type: string
+          maxLength: 255
+          example: "Micronaut"
+
+    VinculoCompetenciaEmpresaResponse:
+      type: object
+      properties:
+        cnpjEmpresa:
+          type: string
+          example: "12345678000199"
+        competencia:
+          type: string
+          example: "Micronaut"
+
+    VinculoCompetenciaVagaInput:
+      type: object
+      required:
+        - idVaga
+        - nome
+      properties:
+        idVaga:
+          type: integer
+          minimum: 1
+          example: 10
+        nome:
+          type: string
+          maxLength: 255
+          example: "PostgreSQL"
+
+    VinculoCompetenciaVagaResponse:
+      type: object
+      properties:
+        idVaga:
+          type: integer
+          example: 10
+        competencia:
+          type: string
+          example: "PostgreSQL"
+
+    VagaCreateInput:
+      type: object
+      required:
+        - cnpjEmpresa
+        - titulo
+        - pais
+        - estado
+        - descricao
+        - areaAtuacao
+        - competencias
+      properties:
+        cnpjEmpresa:
+          type: string
+          maxLength: 18
+          example: "12.345.678/0001-99"
+        titulo:
+          type: string
+          maxLength: 255
+          example: "Desenvolvedor Backend Groovy/Micronaut"
+        pais:
+          type: string
+          maxLength: 100
+          example: "Brasil"
+        estado:
+          type: string
+          maxLength: 100
+          example: "Pernambuco"
+        descricao:
+          type: string
+          example: "Desenvolvimento de microsservicos RESTful e mensageria com Kafka."
+        areaAtuacao:
+          type: string
+          maxLength: 150
+          example: "Tecnologia da Informacao"
+        competencias:
+          type: array
+          minItems: 1
+          items:
+            type: string
+          example: ["Groovy", "Micronaut", "PostgreSQL"]
+
+    VagaUpdateInput:
+      type: object
+      required:
+        - titulo
+        - pais
+        - estado
+        - descricao
+        - areaAtuacao
+      properties:
+        titulo:
+          type: string
+          maxLength: 255
+          example: "Desenvolvedor Backend Pleno"
+        pais:
+          type: string
+          maxLength: 100
+          example: "Brasil"
+        estado:
+          type: string
+          maxLength: 100
+          example: "Pernambuco"
+        descricao:
+          type: string
+          example: "Atuacao em arquitetura orientada a eventos."
+        areaAtuacao:
+          type: string
+          maxLength: 150
+          example: "Engenharia de Software"
+        competencias:
+          type: array
+          minItems: 1
+          description: Opcional na atualizacao; se informado, substitui as competencias da vaga
+          items:
+            type: string
+          example: ["Groovy", "Kafka", "Docker"]
+
+    VagaResponse:
+      type: object
+      properties:
+        idVaga:
+          type: integer
+          example: 1
+        cnpjEmpresa:
+          type: string
+          example: "12.345.678/0001-99"
+        titulo:
+          type: string
+          example: "Desenvolvedor Backend Groovy/Micronaut"
+        pais:
+          type: string
+          example: "Brasil"
+        estado:
+          type: string
+          example: "Pernambuco"
+        descricao:
+          type: string
+          example: "Desenvolvimento de microsservicos RESTful e mensageria com Kafka."
+        areaAtuacao:
+          type: string
+          example: "Tecnologia da Informacao"
+        competencias:
+          type: array
+          items:
+            type: string
+          example: ["Groovy", "Micronaut", "PostgreSQL"]
+
+    CurtidaInput:
+      type: object
+      required:
+        - autor
+        - cpfCandidato
+        - idVaga
+      properties:
+        autor:
+          type: string
+          enum: [CANDIDATO, EMPRESA]
+          description: Define quem esta realizando a curtida
+          example: CANDIDATO
+        cpfCandidato:
+          type: string
+          maxLength: 14
+          example: "12345678901"
+        idVaga:
+          type: integer
+          minimum: 1
+          example: 1
+        cnpjEmpresa:
+          type: string
+          maxLength: 18
+          description: Obrigatorio quando autor for EMPRESA; ignorado quando autor for CANDIDATO
+          example: "12345678000199"
+
+    CurtidaCriadaResponse:
+      type: object
+      properties:
+        mensagem:
+          type: string
+          example: "MATCH ENCONTRADO!"
+        match:
+          type: boolean
+          example: true
+        dados:
+          type: object
+          additionalProperties: true
+
+    RemoverCurtidaInput:
+      type: object
+      required:
+        - autor
+        - cpfCandidato
+        - idVaga
+      properties:
+        autor:
+          type: string
+          enum: [CANDIDATO, EMPRESA]
+          example: EMPRESA
+        cpfCandidato:
+          type: string
+          maxLength: 14
+          example: "12345678901"
+        idVaga:
+          type: integer
+          minimum: 1
+          example: 1
+        cnpjEmpresa:
+          type: string
+          maxLength: 18
+          description: Obrigatorio quando autor for EMPRESA
+          example: "12345678000199"
+
+    MatchesCompletosResponse:
+      type: object
+      properties:
+        matches:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        curtidasPendentes:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    MensagemResponse:
+      type: object
+      properties:
+        mensagem:
+          type: string
+
+    ErroResponse:
+      type: object
+      properties:
+        mensagem:
+          type: string
