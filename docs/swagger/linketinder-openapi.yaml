@@ -1,0 +1,27 @@
+openapi: 3.0.3
+info:
+  title: Linketinder API
+  description: Contrato unificado das APIs RESTful publicas dos microsservicos do Linketinder.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8085
+    description: ms-cadastro — Cadastro de Candidatos e Empresas
+  - url: http://localhost:8086
+    description: ms-competencias — CRUD e Vinculos de Competencias
+  - url: http://localhost:8087
+    description: ms-vagas — CRUD de Vagas
+  - url: http://localhost:8088
+    description: ms-curtidas-matches — Curtidas e Matches
+
+tags:
+  - name: Cadastro
+    description: Endpoints do ms-cadastro (porta 8085)
+  - name: Competencias
+    description: Endpoints do ms-competencias (porta 8086)
+  - name: Vagas
+    description: Endpoints do ms-vagas (porta 8087)
+  - name: Curtidas e Matches
+    description: Endpoints do ms-curtidas-matches (porta 8088)
+
+paths: {}
