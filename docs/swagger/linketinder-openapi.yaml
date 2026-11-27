@@ -123,6 +123,357 @@ paths:
               example:
                 mensagem: Falha ao persistir o cadastro.
 
+  /api/competencias:
+    get:
+      tags: [Competencias]
+      summary: Lista competencias
+      description: Retorna todas as competencias cadastradas no sistema.
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      responses:
+        '200':
+          description: Lista de competencias retornada com sucesso
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompetenciaItem'
+        '500':
+          description: Erro interno ao consultar competencias
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+    post:
+      tags: [Competencias]
+      summary: Cadastra nova competencia
+      description: Cria uma nova competencia tecnica ou comportamental (limite de 255 caracteres).
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompetenciaInput'
+      responses:
+        '201':
+          description: Competencia criada com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CompetenciaItem'
+        '422':
+          description: Nome da competencia ausente ou acima de 255 caracteres
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: nome e obrigatorio e deve ser texto.
+        '409':
+          description: Competencia ja cadastrada
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: Registro duplicado de competencia ou vinculo.
+        '500':
+          description: Erro interno ao persistir competencia
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/competencias/candidatos/consulta-lote:
+    post:
+      tags: [Competencias]
+      summary: Consulta competencias por lote de candidatos
+      description: Recebe uma lista de ate 500 CPFs (11 digitos cada) e retorna um mapa agrupando as competencias de cada candidato.
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConsultaLoteCandidatosInput'
+      responses:
+        '200':
+          description: Mapa de competencias indexado por CPF
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CompetenciaItem'
+              example:
+                "12345678901":
+                  - id: 1
+                    nome: Groovy
+                  - id: 2
+                    nome: Micronaut
+        '422':
+          description: Lista de CPFs invalida, mal formatada ou acima de 500 itens
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: cpfs[0] deve conter exatamente 11 digitos.
+        '500':
+          description: Erro interno na consulta em lote
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/competencias/candidatos/{cpf}:
+    get:
+      tags: [Competencias]
+      summary: Lista competencias de um candidato
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      parameters:
+        - name: cpf
+          in: path
+          required: true
+          description: CPF do candidato (ate 14 caracteres)
+          schema:
+            type: string
+            maxLength: 14
+            example: "12345678901"
+      responses:
+        '200':
+          description: Lista de competencias vinculadas ao candidato
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompetenciaItem'
+        '422':
+          description: CPF invalido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+        '500':
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/competencias/candidatos:
+    post:
+      tags: [Competencias]
+      summary: Vincula competencia a candidato
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VinculoCompetenciaCandidatoInput'
+      responses:
+        '201':
+          description: Competencia vinculada ao candidato com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VinculoCompetenciaCandidatoResponse'
+        '422':
+          description: Dados invalidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+        '409':
+          description: Vinculo ja existente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: Registro duplicado de competencia ou vinculo.
+        '500':
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/competencias/empresas/{cnpj}:
+    get:
+      tags: [Competencias]
+      summary: Lista competencias de uma empresa
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      parameters:
+        - name: cnpj
+          in: path
+          required: true
+          description: CNPJ da empresa (ate 18 caracteres)
+          schema:
+            type: string
+            maxLength: 18
+            example: "12345678000199"
+      responses:
+        '200':
+          description: Lista de competencias vinculadas a empresa
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompetenciaItem'
+        '422':
+          description: CNPJ invalido
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+        '500':
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/competencias/empresas:
+    post:
+      tags: [Competencias]
+      summary: Vincula competencia a empresa
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VinculoCompetenciaEmpresaInput'
+      responses:
+        '201':
+          description: Competencia vinculada a empresa com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VinculoCompetenciaEmpresaResponse'
+        '422':
+          description: Dados invalidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+        '409':
+          description: Vinculo ja existente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: Registro duplicado de competencia ou vinculo.
+        '500':
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/competencias/vagas/{idVaga}:
+    get:
+      tags: [Competencias]
+      summary: Lista competencias de uma vaga
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      parameters:
+        - name: idVaga
+          in: path
+          required: true
+          description: Identificador inteiro positivo da vaga
+          schema:
+            type: integer
+            minimum: 1
+            example: 10
+      responses:
+        '200':
+          description: Lista de competencias vinculadas a vaga
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CompetenciaItem'
+        '422':
+          description: idVaga menor ou igual a zero
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: idVaga deve ser maior que zero.
+        '500':
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
+  /api/competencias/vagas:
+    post:
+      tags: [Competencias]
+      summary: Vincula competencia a vaga
+      servers:
+        - url: http://localhost:8086
+          description: ms-competencias
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VinculoCompetenciaVagaInput'
+      responses:
+        '201':
+          description: Competencia vinculada a vaga com sucesso
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VinculoCompetenciaVagaResponse'
+        '422':
+          description: Dados invalidos
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+        '409':
+          description: Vinculo ja existente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+              example:
+                mensagem: Registro duplicado de competencia ou vinculo.
+        '500':
+          description: Erro interno
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErroResponse'
+
 components:
   schemas:
     CandidatoInput:
@@ -230,6 +581,115 @@ components:
         identificador:
           type: string
           description: CPF do candidato ou CNPJ da empresa cadastrada
+
+    CompetenciaInput:
+      type: object
+      required:
+        - nome
+      properties:
+        nome:
+          type: string
+          maxLength: 255
+          example: "Groovy"
+
+    CompetenciaItem:
+      type: object
+      properties:
+        id:
+          type: integer
+          example: 1
+        nome:
+          type: string
+          example: "Groovy"
+
+    ConsultaLoteCandidatosInput:
+      type: object
+      required:
+        - cpfs
+      properties:
+        cpfs:
+          type: array
+          maxItems: 500
+          description: Lista de CPFs (11 digitos numericos cada)
+          items:
+            type: string
+            example: "12345678901"
+          example: ["12345678901", "98765432100"]
+
+    VinculoCompetenciaCandidatoInput:
+      type: object
+      required:
+        - cpfCandidato
+        - nome
+      properties:
+        cpfCandidato:
+          type: string
+          maxLength: 14
+          example: "12345678901"
+        nome:
+          type: string
+          maxLength: 255
+          example: "Groovy"
+
+    VinculoCompetenciaCandidatoResponse:
+      type: object
+      properties:
+        cpfCandidato:
+          type: string
+          example: "12345678901"
+        competencia:
+          type: string
+          example: "Groovy"
+
+    VinculoCompetenciaEmpresaInput:
+      type: object
+      required:
+        - cnpjEmpresa
+        - nome
+      properties:
+        cnpjEmpresa:
+          type: string
+          maxLength: 18
+          example: "12345678000199"
+        nome:
+          type: string
+          maxLength: 255
+          example: "Micronaut"
+
+    VinculoCompetenciaEmpresaResponse:
+      type: object
+      properties:
+        cnpjEmpresa:
+          type: string
+          example: "12345678000199"
+        competencia:
+          type: string
+          example: "Micronaut"
+
+    VinculoCompetenciaVagaInput:
+      type: object
+      required:
+        - idVaga
+        - nome
+      properties:
+        idVaga:
+          type: integer
+          minimum: 1
+          example: 10
+        nome:
+          type: string
+          maxLength: 255
+          example: "PostgreSQL"
+
+    VinculoCompetenciaVagaResponse:
+      type: object
+      properties:
+        idVaga:
+          type: integer
+          example: 10
+        competencia:
+          type: string
+          example: "PostgreSQL"
 
     ErroResponse:
       type: object
