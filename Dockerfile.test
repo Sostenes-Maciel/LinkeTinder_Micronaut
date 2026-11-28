@@ -1,0 +1,13 @@
+# Imagem base para execucao automatizada de testes unitarios dos microsservicos
+FROM gradle:8.5-jdk21
+
+ARG MS_DIR
+WORKDIR /app
+
+COPY ${MS_DIR}/gradlew ${MS_DIR}/build.gradle* ${MS_DIR}/settings.gradle* ./
+COPY ${MS_DIR}/gradle ./gradle
+RUN chmod +x gradlew && ./gradlew dependencies --no-daemon || true
+
+COPY ${MS_DIR}/src ./src
+
+CMD ["./gradlew", "test", "--no-daemon"]
