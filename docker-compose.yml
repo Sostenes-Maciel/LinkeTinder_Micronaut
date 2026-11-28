@@ -15,10 +15,10 @@ services:
       - ./BancoDeDados/Migracao_CurtidaEmpresaPorVaga.sql:/docker-entrypoint-initdb.d/03-Migracao_CurtidaEmpresaPorVaga.sql:ro
       - ./BancoDeDados/Migracao_CurtidaMultiplosRecrutadores.sql:/docker-entrypoint-initdb.d/04-Migracao_CurtidaMultiplosRecrutadores.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-linketinder}"]
+      test: [ "CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-linketinder}" ]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
     networks:
       - linketinder-net
 
