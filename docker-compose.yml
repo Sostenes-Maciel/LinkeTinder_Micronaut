@@ -57,6 +57,109 @@ services:
     networks:
       - linketinder-net
 
+  ms-cadastro:
+    build:
+      context: ./ms-cadastro
+    container_name: linketinder-ms-cadastro
+    ports:
+      - "8085:8085"
+    environment:
+      PORT: 8085
+      DB_URL: jdbc:postgresql://postgres:5432/linketinder
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:5173}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - linketinder-net
+
+  ms-competencias:
+    build:
+      context: ./ms-competencias
+    container_name: linketinder-ms-competencias
+    ports:
+      - "8086:8086"
+    environment:
+      PORT: 8086
+      DATASOURCES_DEFAULT_URL: jdbc:postgresql://postgres:5432/linketinder
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - linketinder-net
+
+  ms-vagas:
+    build:
+      context: ./ms-vagas
+    container_name: linketinder-ms-vagas
+    ports:
+      - "8087:8087"
+    environment:
+      PORT: 8087
+      DATASOURCES_DEFAULT_URL: jdbc:postgresql://postgres:5432/linketinder
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    networks:
+      - linketinder-net
+
+  ms-emails:
+    build:
+      context: ./ms-emails/ms-emails
+    container_name: linketinder-ms-emails
+    ports:
+      - "8088:8088"
+    environment:
+      PORT: 8088
+      DATASOURCES_DEFAULT_URL: jdbc:postgresql://postgres:5432/linketinder
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      SMTP_HOST: ${SMTP_HOST:-mailpit}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_AUTH: ${SMTP_AUTH:-false}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
+      EMAIL_FROM: ${EMAIL_FROM:-no-reply@linketinder.com}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Linketinder Vagas}
+      EMAIL_MODO_SIMULACAO: ${EMAIL_MODO_SIMULACAO:-false}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    networks:
+      - linketinder-net
+
+  ms-curtidas-matches:
+    build:
+      context: ./ms-curtidas-matches
+    container_name: linketinder-ms-curtidas-matches
+    ports:
+      - "8089:8089"
+    environment:
+      PORT: 8089
+      DATASOURCES_DEFAULT_URL: jdbc:postgresql://postgres:5432/linketinder
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - linketinder-net
+
 volumes:
   postgres_data:
 
