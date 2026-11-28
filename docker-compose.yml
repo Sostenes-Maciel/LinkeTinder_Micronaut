@@ -1,0 +1,65 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: linketinder-postgres
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-linketinder}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./BancoDeDados/LinkeTinder_BD.sql:/docker-entrypoint-initdb.d/01-LinkeTinder_BD.sql:ro
+      - ./BancoDeDados/Migracao_Recrutador.sql:/docker-entrypoint-initdb.d/02-Migracao_Recrutador.sql:ro
+      - ./BancoDeDados/Migracao_CurtidaEmpresaPorVaga.sql:/docker-entrypoint-initdb.d/03-Migracao_CurtidaEmpresaPorVaga.sql:ro
+      - ./BancoDeDados/Migracao_CurtidaMultiplosRecrutadores.sql:/docker-entrypoint-initdb.d/04-Migracao_CurtidaMultiplosRecrutadores.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-linketinder}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - linketinder-net
+
+  kafka:
+    image: apache/kafka:3.8.0
+    container_name: linketinder-kafka
+    ports:
+      - "29092:29092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093,PLAINTEXT_HOST://0.0.0.0:29092
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    networks:
+      - linketinder-net
+
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: linketinder-mailpit
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - linketinder-net
+
+volumes:
+  postgres_data:
+
+networks:
+  linketinder-net:
+    driver: bridge
