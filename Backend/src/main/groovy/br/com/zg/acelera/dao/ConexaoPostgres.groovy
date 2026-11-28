@@ -9,9 +9,9 @@ import groovy.transform.CompileStatic
 
 class ConexaoPostgres implements IConexao {
 
-    private static final String URL = "jdbc:postgresql://localhost:5432/LinkeTinder_BD"
-    private static final String USUARIO = "postgres"
-    private static final String SENHA = "postgres"
+    private static final String URL = System.getenv("DB_URL") ?: "jdbc:postgresql://localhost:5432/LinkeTinder_BD"
+    private static final String USUARIO = System.getenv("DB_USER") ?: "postgres"
+    private static final String SENHA = System.getenv("DB_PASSWORD") ?: "postgres"
 
     private static ConexaoPostgres instancia
 
