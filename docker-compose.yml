@@ -73,6 +73,20 @@ services:
     networks:
       - linketinder-net
 
+  frontend:
+    build:
+      context: ./Frontend
+    container_name: linketinder-frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+      - ms-competencias
+      - ms-vagas
+      - ms-curtidas-matches
+    networks:
+      - linketinder-net
+
   ms-cadastro:
     build:
       context: ./ms-cadastro
@@ -158,6 +172,7 @@ services:
         condition: service_started
     networks:
       - linketinder-net
+
 
   ms-curtidas-matches:
     build:
