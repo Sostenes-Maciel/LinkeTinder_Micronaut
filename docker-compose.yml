@@ -57,6 +57,22 @@ services:
     networks:
       - linketinder-net
 
+  backend:
+    build:
+      context: ./Backend
+    container_name: linketinder-backend
+    ports:
+      - "8080:8080"
+    environment:
+      DB_URL: jdbc:postgresql://postgres:5432/linketinder
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - linketinder-net
+
   ms-cadastro:
     build:
       context: ./ms-cadastro
@@ -166,3 +182,4 @@ volumes:
 networks:
   linketinder-net:
     driver: bridge
+
