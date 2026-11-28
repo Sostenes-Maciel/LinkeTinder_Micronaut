@@ -1,12 +1,12 @@
 FROM eclipse-temurin:21-jdk-alpine AS build
 WORKDIR /app
 
-COPY gradlew settings.gradle build.gradle ./
+COPY gradlew settings.gradle build.gradle gradle.properties* ./
 COPY gradle ./gradle
 RUN chmod +x gradlew && ./gradlew dependencies --no-daemon || true
 
 COPY src ./src
-RUN ./gradlew shadowJar --no-daemon
+RUN ./gradlew shadowJar --no-daemon --max-workers=1 -Dorg.gradle.jvmargs="-Xmx512m -XX:MaxMetaspaceSize=256m"
 
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
