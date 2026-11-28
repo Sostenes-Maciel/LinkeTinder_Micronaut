@@ -638,6 +638,73 @@ A especificação unificada dos contratos RESTful públicos do Linketinder está
 1. **Swagger Editor / Swagger UI:** Importe ou cole o conteúdo de `swagger/linketinder-openapi.yaml` em [editor.swagger.io](https://editor.swagger.io) para explorar os schemas e executar requisições diretamente contra os serviços locais.
 2. **IntelliJ IDEA:** Abra a aba **Endpoints** (`View > Tool Windows > Endpoints`) para visualizar as rotas mapeadas e disparar chamadas pelo **HTTP Client** integrado.
 
+## Atualização - Execução e Deploy com Docker
+
+Toda a aplicação LinkeTinder (Frontend, Backend monolítico, microsserviços Micronaut, PostgreSQL, Apache Kafka e Mailpit) está containerizada e orquestrada via **Docker Compose**, permitindo subir o ambiente completo de forma isolada com um único comando.
+
+### Pré-requisitos
+
+* **Docker e Docker Compose:** Instalados e em execução na máquina (Docker Desktop no Windows/macOS/Linux ou Docker Engine com plugin Compose no Linux).
+* **Git:** Para clonar o repositório.
+* **Portas disponíveis:** `5173`, `8080`, `8085` a `8089`, `8025` e `5432` livres no sistema.
+
+### Passo a Passo para Subir a Aplicação
+
+1. **Clonar o repositório e acessar a pasta raiz:**
+   ```bash
+   git clone <URL_DO_REPOSITORIO>
+   cd <PASTA_DO_PROJETO>
+   ```
+
+2. **Construir as imagens e iniciar todos os containers:**
+   Na raiz do projeto (onde está o arquivo `docker-compose.yml`), execute:
+   ```bash
+   docker compose up -d --build
+   ```
+  * **Primeira execução:** O Docker baixará as imagens base, compilará o Backend, os microsserviços e o Frontend, e executará automaticamente os scripts SQL da pasta `BancoDeDados/` para criar as tabelas e popular os dados iniciais no PostgreSQL. Esse processo pode levar alguns minutos.
+
+3. **Verificar se todos os serviços estão ativos:**
+   ```bash
+   docker compose ps
+   ```
+   Aguarde até que os containers apresentem o status `Up` (ou `healthy` no caso do banco de dados e mensageria).
+
+### URLs e Portas dos Serviços
+
+* **Frontend (Interface Web):** `http://localhost:5173`
+* **Mailpit (Caixa de Entrada de E-mails de Teste):** `http://localhost:8025`
+* **Backend Principal (Tomcat / Groovy):** `http://localhost:8080`
+* **Microsserviço de Cadastro (`ms-cadastro`):** `http://localhost:8085`
+* **Microsserviço de Competências (`ms-competencias`):** `http://localhost:8086`
+* **Microsserviço de Vagas (`ms-vagas`):** `http://localhost:8087`
+* **Microsserviço de Curtidas e Matches (`ms-curtidas-matches`):** `http://localhost:8088`
+* **Microsserviço de E-mails (`ms-emails`):** `http://localhost:8089`
+* **Banco de Dados PostgreSQL:** `localhost:5432` (Banco: `linketinder` | Usuário/Senha padrão: `postgres`)
+
+### Dados Iniciais para Teste
+
+O banco de dados já inicia populado com registros prontos para acesso imediato pela interface (`http://localhost:5173`), utilizando documentos sem pontuação:
+
+* **Login como Candidato:** E-mail `sosmarques@hotmail.com` | CPF `12345678900`
+* **Login como Empresa:** E-mail `vagastech@gmail.com` | CNPJ `98765432000111`
+* **Validação de Mensageria (Kafka + E-mail):** Ao cadastrar uma nova vaga pelo sistema, o `ms-vagas` publica um evento no Apache Kafka e o `ms-emails` dispara automaticamente as notificações para os candidatos, que podem ser visualizadas em `http://localhost:8025`.
+
+### Comandos Úteis de Manutenção
+
+* **Acompanhar logs dos containers em tempo real:**
+  ```bash
+  docker compose logs -f
+  ```
+* **Parar a aplicação mantendo os dados cadastrados no banco:**
+  ```bash
+  docker compose down
+  ```
+* **Resetar completamente o banco de dados (apagar volumes e recriar a partir dos scripts SQL):**
+  ```bash
+  docker compose down -v && docker compose up -d
+  ```
+---
+
 👤 Autor
 
 Sóstenes Marques Maciel

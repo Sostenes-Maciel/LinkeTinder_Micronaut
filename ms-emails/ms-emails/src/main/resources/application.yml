@@ -3,7 +3,7 @@ micronaut:
     name: ms-emails
 
   server:
-    port: ${PORT:8088}
+    port: ${PORT:8089}
 
   email:
     from:
