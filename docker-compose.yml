@@ -117,9 +117,9 @@ services:
       context: ./ms-emails/ms-emails
     container_name: linketinder-ms-emails
     ports:
-      - "8088:8088"
+      - "8089:8089"
     environment:
-      PORT: 8088
+      PORT: 8089
       DATASOURCES_DEFAULT_URL: jdbc:postgresql://postgres:5432/linketinder
       DB_USER: ${POSTGRES_USER:-postgres}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
@@ -148,9 +148,9 @@ services:
       context: ./ms-curtidas-matches
     container_name: linketinder-ms-curtidas-matches
     ports:
-      - "8089:8089"
+      - "8088:8088"
     environment:
-      PORT: 8089
+      PORT: 8088
       DATASOURCES_DEFAULT_URL: jdbc:postgresql://postgres:5432/linketinder
       DB_USER: ${POSTGRES_USER:-postgres}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
